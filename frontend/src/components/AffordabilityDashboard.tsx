@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 
 import toast from 'react-hot-toast';
 import { fetchLiveMarketData } from '../services/geminiService';
@@ -43,7 +43,7 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
   const [analysis, setAnalysis] = useState<GeminiAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   
-  const { flagListing, flaggedListings, vaultStatus, toggleVaultDoc, savedListings, saveListing, aiCalibratedFields, syncAiCalibratedFields, saveUserBudget } = useBackboard();
+  const { vaultStatus, toggleVaultDoc, savedListings, saveListing, aiCalibratedFields, syncAiCalibratedFields, saveUserBudget } = useBackboard();
 
   // New Dashboard Overhaul State
   const [filters, setFilters] = useState<FilterState>({
@@ -184,14 +184,6 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
     }
   };
 
-  // Initial load only
-  useEffect(() => {
-    // Only fetch if we have absolutely no listings securely cached for this session yet
-    if (validListings.length === 0) {
-      handleExecuteSearch();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // We remove the hard return for loading/error so the skeleton can render within the holy grail structure
   
@@ -533,12 +525,11 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
 
       {/* INSIGHT PANEL (global slide-over, shown in any tab) */}
       <SmartInsightPanel
+        key={selectedListingId || 'none'}
         listing={selectedListingId ? validListings.find(l => l.id === selectedListingId) || null : null}
         aiData={selectedListingId ? getGeminiListingData(selectedListingId) : null}
         budget={budget}
         lifestyle={lifestyle}
-        isFlagged={selectedListingId ? flaggedListings.includes(selectedListingId) : false}
-        onFlag={flagListing}
         onClose={() => setSelectedListingId(null)}
       />
 

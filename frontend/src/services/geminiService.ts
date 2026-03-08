@@ -279,7 +279,7 @@ export interface ReportClaim {
 export interface NeighborhoodReport {
   reputation: ReportClaim[];
   safety: ReportClaim[];
-  environmentalVibe: string;
+  environmentalVibe: ReportClaim[];
 }
 
 export const fetchDeepNeighborhoodReport = async (address: string, city: string): Promise<NeighborhoodReport> => {
@@ -302,7 +302,9 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
   "safety": [
     { "claim": "concise finding about neighborhood safety or crime", "source": "source name", "url": "optional URL" }
   ],
-  "environmentalVibe": "A single 2-3 sentence summary of the environmental vibe: noise level, nearby green spaces, and who lives here (students, families, young professionals)."
+  "environmentalVibe": [
+    { "claim": "concise finding about noise, green space, or demographics", "source": "source name", "url": "optional URL" }
+  ]
 }
 
 RULES:

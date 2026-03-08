@@ -3,7 +3,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { useBackboard } from '../hooks/useBackboard';
 import type { UserPreferences } from '../hooks/useBackboard';
 import { AffordabilityDashboard } from './AffordabilityDashboard';
-import { Map, List, FolderLock, Activity, LogOut, Pencil, Save, X, User, Shield } from 'lucide-react';
+import { Map, List, FolderLock, Activity, LogOut, Pencil, Save, X, User, Shield, HelpCircle } from 'lucide-react';
 import './Dashboard.css';
 
 type Tab = 'explore' | 'listings' | 'vault' | 'advocate' | 'activity';
@@ -38,6 +38,16 @@ export const Dashboard = () => {
   const [draftBudget, setDraftBudget] = useState(1500);
   const [draftLifestyle, setDraftLifestyle] = useState(preferences.lifestyle);
   const [activeTab, setActiveTab] = useState<Tab>('explore');
+  const [showHelp, setShowHelp] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleCloseHelp = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setShowHelp(false);
+      setIsClosing(false);
+    }, 300); // match CSS animation duration
+  };
 
   useEffect(() => {
     if (isAuthenticated && user?.sub) {
@@ -92,9 +102,16 @@ export const Dashboard = () => {
         </nav>
 
         <div className="db-topnav-right">
+          <button 
+            className="db-help-btn"
+            onClick={() => setShowHelp(!showHelp)}
+            title="How to use CanAfford"
+          >
+            <HelpCircle size={15} />
+          </button>
           <div className="db-user-pill">
             <User size={13} />
-            <span>{user?.given_name || user?.name?.split(' ')[0] || 'You'}</span>
+            <span className="db-user-name">{user?.given_name || user?.name?.split(' ')[0] || 'You'}</span>
           </div>
           <button
             className="db-logout-btn"
@@ -104,6 +121,36 @@ export const Dashboard = () => {
           </button>
         </div>
       </header>
+
+      {/* ── HELP MODAL ── */}
+      {showHelp && (
+        <div className={`db-help-overlay ${isClosing ? 'closing' : ''}`} onClick={handleCloseHelp}>
+          <div className={`db-help-card ${isClosing ? 'closing' : ''}`} onClick={e => e.stopPropagation()}>
+            <header>
+              <h3><HelpCircle size={18} /> Getting Started</h3>
+              <button className="db-close-btn" onClick={handleCloseHelp}>&times;</button>
+            </header>
+            <div className="db-help-content">
+              <section>
+                <h4>1. Set Your Budget</h4>
+                <p>Use the <strong>Memory Bar</strong> to set your monthly housing budget. We'll use this to calculate "True Cost" (Rent + Food + Transit).</p>
+              </section>
+              <section>
+                <h4>2. Search & Filter</h4>
+                <p>In the <strong>Explore</strong> tab, search for properties. Use the filters to adjust commute tolerance or split rent with a roommate.</p>
+              </section>
+              <section>
+                <h4>3. Deep Insights</h4>
+                <p>Click any property to see its <strong>Smart Insight Panel</strong>. You can listen to an AI brief, scan your potential lease for red flags, or run a neighborhood background check.</p>
+              </section>
+              <section>
+                <h4>4. Behavioral Vault</h4>
+                <p>Save at least 3 properties to the <strong>Vault</strong>. Our AI will compare your stated preferences to what you actually favorite, helping you find your <strong>Reality Budget</strong>.</p>
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── PROFILE MEMORY BAR (always visible) ── */}
       <section className="db-memory-bar">

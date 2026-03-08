@@ -8,7 +8,11 @@ import type { PropertyBriefInput } from '../services/voiceService';
 import { MOCK_ONTARIO_LEASE } from '../data/mockLease';
 import { fetchDeepNeighborhoodReport } from '../services/geminiService';
 import type { NeighborhoodReport } from '../services/geminiService';
-import { ExternalLink, Volume2, Flag, AlertTriangle, FileText, Mail, Lightbulb, Home, Train, ShoppingCart, Info, Search, Copy, Link2, ChevronRight } from 'lucide-react';
+import { 
+  ExternalLink, Volume2, AlertTriangle, FileText, 
+  Mail, Lightbulb, Home, Train, ShoppingCart, Info, 
+  Search, Copy, Link2, ChevronRight 
+} from 'lucide-react';
 import './SmartInsightPanel.css';
 
 interface SmartInsightPanelProps {
@@ -17,13 +21,29 @@ interface SmartInsightPanelProps {
   budget: number;
   lifestyle: UserLifestyle;
   onClose: () => void;
-  isFlagged: boolean;
-  onFlag: (id: string, reason: string) => void;
 }
 
 export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({ 
-  listing, aiData, budget, lifestyle, onClose, isFlagged, onFlag 
+  listing, aiData, budget, lifestyle, onClose 
 }) => {
+  const [isClosing, setIsClosing] = useState(false);
+  
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(onClose, 300); // match CSS animation duration
+  };
+
+  // State Reset on Listing Change (Safety)
+  React.useEffect(() => {
+    setLeaseFlags(null);
+    setIntroEmail(null);
+    setDeepReport(null);
+    setAudioState('idle');
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+  }, [listing?.id]);
   const [audioState, setAudioState] = React.useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   
@@ -226,10 +246,10 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
   };
 
   return (
-    <aside className="smart-insight-panel pro-theme">
+    <aside className={`smart-insight-panel ${isClosing ? 'closing' : ''} pro-theme`}>
       <header className="sip-header">
         <h2>Property Insights</h2>
-        <button className="close-panel-btn" onClick={onClose}>&times;</button>
+        <button className="close-panel-btn" onClick={handleClose}>&times;</button>
       </header>
 
       <div className="sip-content">
@@ -403,12 +423,12 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
                       </span>
                       {item.source && (
                         item.url ? (
-                          <a href={item.url} target="_blank" rel="noreferrer" style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic', marginLeft: '19px', textDecoration: 'none', transition: 'color 0.2s'}} onMouseEnter={e => (e.currentTarget.style.color = '#93c5fd')} onMouseLeave={e => (e.currentTarget.style.color = '#64748b')}>
-                            <Link2 size={10} /> Source: {item.source}
+                          <a href={item.url} target="_blank" rel="noreferrer" style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#60efff', fontStyle: 'italic', marginLeft: '19px', textDecoration: 'none', transition: 'color 0.2s'}}>
+                            <Link2 size={10} /> Source: {item.source.split(',')[0].trim()}
                           </a>
                         ) : (
                           <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic', marginLeft: '19px'}}>
-                            <Link2 size={10} /> Source: {item.source}
+                            <Link2 size={10} /> Source: {item.source.split(',')[0].trim()}
                           </span>
                         )
                       )}
@@ -428,12 +448,12 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
                       </span>
                       {item.source && (
                         item.url ? (
-                          <a href={item.url} target="_blank" rel="noreferrer" style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic', marginLeft: '19px', textDecoration: 'none', transition: 'color 0.2s'}} onMouseEnter={e => (e.currentTarget.style.color = '#93c5fd')} onMouseLeave={e => (e.currentTarget.style.color = '#64748b')}>
-                            <Link2 size={10} /> Source: {item.source}
+                          <a href={item.url} target="_blank" rel="noreferrer" style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#60efff', fontStyle: 'italic', marginLeft: '19px', textDecoration: 'none', transition: 'color 0.2s'}}>
+                            <Link2 size={10} /> Source: {item.source.split(',')[0].trim()}
                           </a>
                         ) : (
                           <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic', marginLeft: '19px'}}>
-                            <Link2 size={10} /> Source: {item.source}
+                            <Link2 size={10} /> Source: {item.source.split(',')[0].trim()}
                           </span>
                         )
                       )}
@@ -443,29 +463,32 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
               </div>
               
               <div className="report-item" style={{marginBottom: '12px'}}>
-                <span className="report-label" style={{display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '4px'}}>Environmental Vibe</span>
-                <p style={{fontSize: '0.8rem', lineHeight: 1.4}} className="report-text text-slate-200">
-                  {deepReport.environmentalVibe}
-                </p>
+                <span className="report-label" style={{display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '8px'}}>Environmental Vibe</span>
+                <ul style={{listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                  {deepReport.environmentalVibe.map((item, idx) => (
+                    <li key={idx} style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                      <div style={{display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.8rem', lineHeight: 1.4, color: '#cbd5e1'}}>
+                        <ChevronRight size={13} style={{marginTop: '2px', flexShrink: 0, color: '#64748b'}} />
+                        <span>{item.claim}</span>
+                      </div>
+                      {item.source && (
+                        item.url ? (
+                          <a href={item.url} target="_blank" rel="noreferrer" style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#60efff', fontStyle: 'italic', marginLeft: '19px', textDecoration: 'none', transition: 'color 0.2s'}}>
+                            <Link2 size={10} /> Source: {item.source.split(',')[0].trim()}
+                          </a>
+                        ) : (
+                          <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic', marginLeft: '19px'}}>
+                            <Link2 size={10} /> Source: {item.source.split(',')[0].trim()}
+                          </span>
+                        )
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           )}
 
-          {!isFlagged && (
-            <button 
-              className="sip-flag-btn" 
-              onClick={() => onFlag(listing.id, "Too good to be true")}
-              style={{marginTop: '1.5rem'}}
-            >
-              <Flag size={14} /> Flag as Suspicious
-            </button>
-          )}
-          
-          {isFlagged && (
-            <div className="sip-flagged-warning">
-              <AlertTriangle size={14} /> This property is flagged.
-            </div>
-          )}
         </section>
 
         <section className="sip-section logistics-toolkit">

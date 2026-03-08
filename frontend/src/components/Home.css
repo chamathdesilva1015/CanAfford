@@ -126,6 +126,7 @@
   line-height: 1.08;
   margin: 0 0 1.2rem;
   color: #f1f5f9;
+  overflow: visible;
 }
 
 .lp-headline-accent {

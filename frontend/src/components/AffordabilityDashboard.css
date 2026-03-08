@@ -9,7 +9,9 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overflow-x: hidden !important;
   position: relative;
+  max-width: 100%;
 }
 
 /* ── Tab header (title + subtitle used in all tabs) ── */
@@ -39,12 +41,14 @@
   flex: 1;
   height: calc(100vh - 112px);
   overflow: hidden;
+  overflow-x: hidden !important;
 }
 
 .adb-sidebar {
-  width: 280px;
+  width: 270px;
   flex-shrink: 0;
   overflow-y: auto;
+  overflow-x: hidden !important;
   border-right: 1px solid rgba(255,255,255,0.05);
   background: rgba(255,255,255,0.015);
   padding: 1rem;

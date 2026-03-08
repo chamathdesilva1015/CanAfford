@@ -148,10 +148,12 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ listings, budget
                   </td>
                 ))}
               </tr>
+              <tr>
                 <td><strong>Regional Analysis</strong></td>
                 {listings?.map(l => (
                   <td key={l.id}>Strict Audit</td>
                 ))}
+              </tr>
               <tr>
                 <td><strong>Trust Score</strong></td>
                 {listings?.map(l => (

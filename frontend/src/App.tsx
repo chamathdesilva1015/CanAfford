@@ -22,7 +22,7 @@ function App() {
 
   return (
     <div className="app-container">
-      {!isLanding && (
+      {!isLanding && location.pathname !== '/dashboard' && (
         <nav className="navbar">
           <h1 className="logo">CanAfford</h1>
         </nav>

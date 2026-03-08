@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { MapPin } from 'lucide-react';
 import type { VerifiedListing } from '../services/geminiService';
 import './MapView.css';
 
@@ -95,6 +96,11 @@ export const MapView: React.FC<MapViewProps> = React.memo(({ listings, selectedL
           </Marker>
         ))}
       </MapContainer>
+      
+      <div className="map-disclaimer">
+        <MapPin size={10} />
+        <span>Map markers are approximate and may not reflect the exact property location.</span>
+      </div>
     </div>
   );
 });
