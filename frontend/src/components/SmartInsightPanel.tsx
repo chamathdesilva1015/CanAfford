@@ -1,10 +1,4 @@
 import React, { useState } from 'react';
-import { cld } from '../cloudinary/config';
-import { AdvancedImage, placeholder, lazyload } from '@cloudinary/react';
-import { fill } from '@cloudinary/url-gen/actions/resize';
-import { format, quality } from '@cloudinary/url-gen/actions/delivery';
-import { auto } from '@cloudinary/url-gen/qualifiers/format';
-import { auto as autoQuality } from '@cloudinary/url-gen/qualifiers/quality';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import toast from 'react-hot-toast';
 import type { VerifiedListing } from '../services/geminiService';
@@ -12,7 +6,7 @@ import type { UserLifestyle } from '../hooks/useBackboard';
 import { generatePropertyBrief } from '../services/voiceService';
 import type { PropertyBriefInput } from '../services/voiceService';
 import { MOCK_ONTARIO_LEASE } from '../data/mockLease';
-import { ExternalLink, Volume2, Flag, AlertTriangle, FileText, Mail, Lightbulb, Home, Train, ShoppingCart, Info, Building } from 'lucide-react';
+import { ExternalLink, Volume2, Flag, AlertTriangle, FileText, Mail, Lightbulb, Home, Train, ShoppingCart, Info } from 'lucide-react';
 import './SmartInsightPanel.css';
 
 interface SmartInsightPanelProps {
@@ -37,7 +31,6 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
   
   const [generatingEmail, setGeneratingEmail] = useState(false);
   const [introEmail, setIntroEmail] = useState<string | null>(null);
-  const [imgError, setImgError] = useState(false);
 
   if (!listing) return null;
 
@@ -204,89 +197,59 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
   };
 
 
-  const isExternalImage = listing.imageId.startsWith('http');
-  let displayImage: any = null;
-  if (!isExternalImage) {
-    displayImage = cld
-      .image(listing.imageId)
-      .resize(fill().width(600).height(400))
-      .delivery(format(auto()))
-      .delivery(quality(autoQuality()));
-  }
-
   return (
-    <aside className={`smart-insight-panel pro-theme`}>
+    <aside className="smart-insight-panel pro-theme">
       <header className="sip-header">
-        <h2 className="text-slate-900">Property Insights</h2>
+        <h2>Property Insights</h2>
         <button className="close-panel-btn" onClick={onClose}>&times;</button>
       </header>
 
       <div className="sip-content">
         <div className="sip-hero">
-          {imgError ? (
-            <div className="sip-main-img w-full h-48 bg-slate-800 flex flex-col items-center justify-center text-slate-400">
-              <Building size={32} className="mb-2 opacity-50" />
-              <span className="text-sm">No Image Provided</span>
-            </div>
-          ) : isExternalImage ? (
-            <img 
-              src={listing.imageId} 
-              alt={listing.address} 
-              className="sip-main-img" 
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <AdvancedImage
-              cldImg={displayImage}
-              plugins={[placeholder({ mode: 'blur' }), lazyload()]}
-              alt={listing.address}
-              className="sip-main-img"
-              onError={() => setImgError(true)}
-            />
-          )}
-          <div className={`sip-badge ${status === 'Stretch' ? 'bg-amber-100 text-amber-800 border border-amber-200' : `bg-${status.toLowerCase()}`}`}>{status}</div>
+          <div className="adb-card-placeholder" style={{ height: '100%' }}>
+            <Home size={64} strokeWidth={1.2} />
+          </div>
+          <div className={`sip-badge sip-badge--${status.toLowerCase()}`}>{status}</div>
         </div>
 
         <section className="sip-section header-info">
-          <h3 className="text-slate-900">{listing.address}</h3>
+          <h3>{listing.address}</h3>
           
-          {/* Price display — conditional on data type returned */}
-          <p className="base-rent text-slate-900">
+          <p className="base-rent">
             {hasSinglePrice && (
               <>
-                <span style={{fontSize:'0.8rem', color:'#64748b', textTransform:'uppercase', letterSpacing:'0.05em'}}>Listed Price</span><br/>
+                <span className="rent-label">Listed Price</span><br/>
                 <strong>${listing.singlePrice}/mo</strong>
               </>
             )}
             {hasRange && (
               <>
-                <span style={{fontSize:'0.8rem', color:'#64748b', textTransform:'uppercase', letterSpacing:'0.05em'}}>Market Rent Range</span><br/>
+                <span className="rent-label">Market Rent Range</span><br/>
                 <strong>${priceMin} – ${priceMax}/mo</strong>
-                <span style={{display:'block', fontSize:'0.75rem', color:'#64748b', marginTop:2}}>Exact range sourced from listing</span>
+                <span className="rent-note">Exact range sourced from listing</span>
               </>
             )}
             {!hasSinglePrice && !hasRange && (
               <>
-                <span style={{fontSize:'0.8rem', color:'#64748b'}}>Estimated Rent</span><br/>
+                <span className="rent-label">Estimated Rent</span><br/>
                 <strong>${listing.verifiedRent}/mo</strong>
               </>
             )}
           </p>
 
-          {/* Partial match badge */}
           {isPartialMatch && (
-            <div style={{background:'#fef3c7', border:'1px solid #f59e0b', borderRadius:8, padding:'6px 10px', marginBottom:8, fontSize:'0.8rem', color:'#92400e'}}>
+            <div className="partial-match-badge">
               Partial Match — entry-level units may fit your budget
             </div>
           )}
 
-          <p className="sip-desc text-slate-600">"{listing.description}"</p>
+          <p className="sip-desc">"{listing.description}"</p>
           <a href={verifyUrl} target="_blank" rel="noreferrer" className="verify-link-btn">
             <ExternalLink size={15} />
             {verifyLabel}
           </a>
           {listing.verificationSource && (
-            <p style={{fontSize:'0.7rem', color:'#94a3b8', marginTop:6, wordBreak:'break-all'}}>
+            <p className="source-note">
               Source: {listing.verificationSource}
             </p>
           )}

@@ -110,22 +110,39 @@
   box-shadow: 0 0 0 1px #00ff87, 0 8px 28px rgba(0,255,135,0.15);
 }
 
-.adb-card--large .adb-card-img img,
-.adb-card--large .adb-card-img > div {
-  height: 200px;
+.adb-card-img img,
+.adb-card-img > div {
+  width: 100%;
+  height: 140px; /* Reduced slightly for better proportions */
+  object-fit: cover;
+  display: block;
 }
 
-.adb-card-img {
+.adb-card--large .adb-card-img img,
+.adb-card--large .adb-card-img > div {
+  height: 180px;
+}
+
+.adb-card-placeholder {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.8));
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  color: rgba(96, 239, 255, 0.15);
   position: relative;
   overflow: hidden;
 }
 
-.adb-card-img img,
-.adb-card-img > div {
-  width: 100%;
-  height: 160px;
-  object-fit: cover;
-  display: block;
+.adb-card-placeholder::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(96, 239, 255, 0.05) 0%, transparent 70%);
+}
+
+.adb-card-placeholder svg {
+  z-index: 1;
+  filter: drop-shadow(0 0 10px rgba(96, 239, 255, 0.1));
 }
 
 .adb-badge {

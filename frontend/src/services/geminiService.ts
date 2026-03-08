@@ -75,6 +75,8 @@ ${preferenceString}
   
 Execute your Google Search using this exact query: "Apartments and rooms for rent in ${city === 'All' ? 'Ontario' : city} around $${maxBudget}". Find listings centered around a target budget of $${maxBudget}. Include properties up to 15% above this budget to demonstrate stretch options, and properties below it. Do NOT artificially cap the search strictly under the budget.
 
+CRITICAL COORDINATE RULE: For EVERY listing, you MUST provide accurate "lat" and "lng" coordinates for its specific address in ${city === 'All' ? 'Ontario' : city}. Do NOT return [0, 0] or generic city center coordinates if you can find the specific ones.
+
 CRITICAL SEARCH RULE: Do NOT apply any lifestyle, dietary, or transit filters to the search query itself. Only filter by geography and base rent price.
 
 CRITICAL ANTI-RECITATION RULE: You are strictly forbidden from copying sentences or paragraphs verbatim from the search results. You must synthesize and paraphrase all property descriptions, summaries, and survival tips into your own words. You may only extract exact values for addresses, numbers, and URLs.
@@ -219,6 +221,21 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
     // Use the index to predictably assign a realistic placeholder because LLM generated image URLs are frequently broken/404.
     const finalImage = fallbackImages[index % fallbackImages.length];
 
+    // City center fallbacks to prevent "Toronto Default" bug
+    const CITY_CENTERS: Record<string, {lat: number, lng: number}> = {
+      'toronto': { lat: 43.6532, lng: -79.3832 },
+      'hamilton': { lat: 43.2557, lng: -79.8711 },
+      'guelph': { lat: 43.5448, lng: -80.2482 },
+      'ottawa': { lat: 45.4215, lng: -75.6972 },
+      'mississauga': { lat: 43.5890, lng: -79.6441 },
+      'waterloo': { lat: 43.4643, lng: -80.5204 },
+      'kitchener': { lat: 43.4516, lng: -80.4925 },
+      'london': { lat: 42.9849, lng: -81.2453 }
+    };
+
+    const currentCity = (item.city || city).toLowerCase();
+    const fallback = CITY_CENTERS[currentCity] || CITY_CENTERS['toronto'];
+
     return {
       id: item.id || `live-${index}`,
       address: item.address || 'Unknown Address',
@@ -232,8 +249,8 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
       verificationSource: item.verificationSource || sourceCitations[index] || groundingSearchUrl || undefined,
       description: item.description || 'Live market data pulled via Gemini Search.',
       imageId: finalImage,
-      lat: item.lat || 43.6532,
-      lng: item.lng || -79.3832,
+      lat: (item.lat && item.lat !== 0) ? item.lat : fallback.lat,
+      lng: (item.lng && item.lng !== 0) ? item.lng : fallback.lng,
       trustScore: (item.trustScore && item.trustScore > 10) ? item.trustScore : Math.floor(Math.random() * 30) + 65, // ensure it's out of 100
       financialInsight: item.financialInsight || 'Pricing looks standard for this neighborhood.',
       communityNotes: item.communityNotes || ['Live fetched data', 'Real-time market rate']

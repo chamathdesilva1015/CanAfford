@@ -25,6 +25,29 @@ export const Home = () => {
   const problemRef = useFadeIn();
   const howRef = useFadeIn();
   const footerRef = useFadeIn();
+  const heroContentRef = useFadeIn();
+  const heroRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!heroRef.current) return;
+      const { left, top, width, height } = heroRef.current.getBoundingClientRect();
+      const x = ((e.clientX - left) / width) * 100;
+      const y = ((e.clientY - top) / height) * 100;
+      heroRef.current.style.setProperty('--mouse-x', `${x}%`);
+      heroRef.current.style.setProperty('--mouse-y', `${y}%`);
+    };
+
+    const heroEl = heroRef.current;
+    if (heroEl) {
+      heroEl.addEventListener('mousemove', handleMouseMove);
+    }
+    return () => {
+      if (heroEl) {
+        heroEl.removeEventListener('mousemove', handleMouseMove);
+      }
+    };
+  }, []);
 
   if (!isLoading && isAuthenticated) return <Navigate to="/dashboard" replace />;
 
@@ -44,9 +67,9 @@ export const Home = () => {
       </nav>
 
       {/* ── HERO ── */}
-      <section className="lp-hero">
+      <section className="lp-hero" ref={heroRef}>
         <div className="lp-hero-glow" aria-hidden="true" />
-        <div className="lp-hero-content">
+        <div className="lp-hero-content lp-fade" ref={heroContentRef as any}>
           <div className="lp-hero-badge">
             <ShieldCheck size={13} /> Verified data &nbsp;·&nbsp; No guessing
           </div>

@@ -66,3 +66,30 @@
   cursor: pointer;
   accent-color: #60efff;
 }
+
+.adb-execute-search-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #0061ff, #60efff);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.18s, box-shadow 0.18s, opacity 0.18s;
+  box-shadow: 0 4px 15px rgba(96, 239, 255, 0.25);
+}
+
+.adb-execute-search-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(96, 239, 255, 0.4);
+}
+
+.adb-execute-search-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -8,9 +8,9 @@
   font-family: 'Inter', system-ui, sans-serif;
   background: #000000;
   color: #e2e8f0;
-  overflow-x: hidden;
-  min-height: 100vh;
-  /* Enable smooth anchored scrolling */
+  /* Ensure root container doesn't create extra scrollbars */
+  min-height: auto;
+  overflow: visible;
   scroll-behavior: smooth;
 }
 
@@ -23,16 +23,17 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 2.5rem;
-  height: 62px;
-  background: rgba(7, 17, 31, 0.82);
+  height: 60px; /* Matching dashboard height */
+  background: rgba(5, 5, 5, 0.92); /* Matching dashboard background */
   backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255,255,255,0.055);
+  border-bottom: 1px solid rgba(255,255,255,0.06); /* Matching dashboard border */
 }
 
 .lp-logo {
-  font-size: 1.2rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-family: 'Fraunces', serif; /* Matching dashboard font */
+  font-size: 1.15rem; /* Matching dashboard size */
+  font-weight: 900;
+  letter-spacing: -0.04em;
   background: linear-gradient(130deg, #60efff 0%, #00ff87 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -56,17 +57,21 @@
 .lp-nav-links a:hover { color: #e2e8f0; }
 
 .lp-nav-cta {
-  background: #0061ff;
-  color: #fff;
-  border: none;
+  background: rgba(0, 97, 255, 0.1); /* Matching logout style but in primary blue */
+  color: #60efff;
+  border: 1px solid rgba(0, 97, 255, 0.2);
   border-radius: 8px;
-  padding: 8px 18px;
-  font-size: 0.875rem;
+  padding: 7px 16px;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.18s, transform 0.15s;
+  transition: background 0.18s, border-color 0.18s;
 }
-.lp-nav-cta:hover { background: #4f46e5; transform: translateY(-1px); }
+
+.lp-nav-cta:hover {
+  background: rgba(0, 97, 255, 0.18);
+  border-color: rgba(0, 97, 255, 0.35);
+}
 
 /* ── HERO ── */
 .lp-hero {
@@ -83,10 +88,13 @@
 .lp-hero-glow {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse 900px 600px at 50% 40%, rgba(99,102,241,0.18) 0%, transparent 70%),
-    radial-gradient(ellipse 600px 400px at 60% 60%, rgba(16,185,129,0.07) 0%, transparent 60%);
+  /* Interaction follows --mouse-x/y set in TSX */
+  background: 
+    radial-gradient(ellipse 700px 500px at var(--mouse-x, 50%) var(--mouse-y, 40%), rgba(99,102,241,0.22) 0%, transparent 65%),
+    radial-gradient(ellipse 500px 300px at var(--mouse-x, 60%) var(--mouse-y, 60%), rgba(16,185,129,0.12) 0%, transparent 55%),
+    radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 0%, #000 95%);
   pointer-events: none;
+  transition: background 0.15s ease-out;
 }
 
 .lp-hero-content {
@@ -476,16 +484,42 @@
 /* ── SCROLL FADE ── */
 .lp-fade {
   opacity: 0;
-  transform: translateY(24px);
-  transition:
-    opacity 0.62s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.62s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(40px) scale(0.98);
+  filter: blur(10px);
+  transition: 
+    opacity 1.2s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1.2s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity, filter;
 }
 
 .lp-fade.lp-visible {
   opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+/* Staggered reveals for grid items */
+.lp-problem-grid > *,
+.lp-features-grid > * {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.lp-visible .lp-problem-grid > *,
+.lp-visible .lp-features-grid > * {
+  opacity: 1;
   transform: translateY(0);
 }
+
+.lp-visible .lp-problem-grid > *:nth-child(1) { transition-delay: 0.1s; }
+.lp-visible .lp-problem-grid > *:nth-child(2) { transition-delay: 0.2s; }
+.lp-visible .lp-problem-grid > *:nth-child(3) { transition-delay: 0.3s; }
+
+.lp-visible .lp-features-grid > *:nth-child(1) { transition-delay: 0.1s; }
+.lp-visible .lp-features-grid > *:nth-child(2) { transition-delay: 0.2s; }
+.lp-visible .lp-features-grid > *:nth-child(3) { transition-delay: 0.3s; }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {

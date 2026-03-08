@@ -1,8 +1,7 @@
-/* GLOBAL LAYOUT overrides to avoid interfering with Dashboard */
 .app-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  /* Scroll and height managed in index.css */
 }
 
 .navbar {

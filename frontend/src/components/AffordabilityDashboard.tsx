@@ -1,12 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 
-import { AdvancedImage, placeholder, lazyload } from '@cloudinary/react';
-import { fill } from '@cloudinary/url-gen/actions/resize';
-import { format, quality } from '@cloudinary/url-gen/actions/delivery';
-import { auto } from '@cloudinary/url-gen/qualifiers/format';
-import { auto as autoQuality } from '@cloudinary/url-gen/qualifiers/quality';
 import toast from 'react-hot-toast';
-import { cld } from '../cloudinary/config';
 import { fetchLiveMarketData } from '../services/geminiService';
 import type { VerifiedListing, CityEconomics } from '../services/geminiService';
 import { useBackboard } from '../hooks/useBackboard';
@@ -16,8 +10,8 @@ import { MapView } from './MapView';
 import { ComparisonView } from './ComparisonView';
 import { SmartInsightPanel } from './SmartInsightPanel';
 import { Vault } from './Vault';
-import { SkeletonCard } from './SkeletonCard';
-import { Scale, Building } from 'lucide-react';
+import { LoadingScreen } from './LoadingScreen';
+import { Scale, Home } from 'lucide-react';
 import type { UserLifestyle } from '../hooks/useBackboard';
 import './AffordabilityDashboard.css';
 
@@ -57,9 +51,6 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
   
-  // Image Fallback State
-  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
-
   const targetCity = filters.city !== 'All' ? filters.city : (cities[0] || 'Toronto');
 
   const handleToggleCompare = (id: string) => {
@@ -168,11 +159,14 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
         analysis: generatedAnalysis
       }));
       
-      toast.success(`Found ${strictListings.length} live listings with 2026 economic data`);
+      // Ensure state updates are flushed before we hide loading
+      setTimeout(() => {
+        setLoading(false);
+        toast.success(`Found ${strictListings.length} live listings with 2026 economic data`);
+      }, 500);
     } catch (err: any) {
       console.error("Live Market Fetch Error:", err.message);
       toast.error(`Market Search failed: ${err.message}`, { id: 'api-error' });
-    } finally {
       setLoading(false);
     }
   };
@@ -238,7 +232,7 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
               </div>
               <div className="adb-card-grid gap-6">
                 {loading
-                  ? Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
+                  ? <div style={{gridColumn: '1 / -1'}}><LoadingScreen /></div>
                   : filteredListings.length === 0
                     ? (
                         <div style={{gridColumn: '1 / -1', textAlign: 'center', padding: '60px 20px', color: '#94a3b8'}}>
@@ -250,27 +244,12 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
                         const aiData = getGeminiListingData(listing.id);
                         const status = aiData?.status || 'Unavailable';
                         const sc = status.toLowerCase();
-                        const isExternal = listing.imageId.startsWith('http');
-                        let displayImage: any = null;
-                        if (!isExternal) {
-                          displayImage = cld.image(listing.imageId)
-                            .resize(fill().width(300).height(180))
-                            .delivery(format(auto()))
-                            .delivery(quality(autoQuality()));
-                        }
                         return (
                           <div key={listing.id} className={`adb-card status-${sc} ${selectedListingId === listing.id ? 'adb-card--selected' : ''}`} onClick={() => setSelectedListingId(listing.id)}>
                             <div className="adb-card-img">
-                              {imageErrors[listing.id] ? (
-                                <div className="w-full h-48 bg-slate-800 flex flex-col items-center justify-center text-slate-400">
-                                  <Building size={24} className="mb-2 opacity-50" />
-                                  <span className="text-xs">No Image Provided</span>
-                                </div>
-                              ) : isExternal ? (
-                                <img src={listing.imageId} alt={listing.address} loading="lazy" onError={() => setImageErrors(p => ({...p, [listing.id]: true}))} />
-                              ) : (
-                                <AdvancedImage cldImg={displayImage} plugins={[placeholder({ mode: 'blur' }), lazyload()]} alt={listing.address} onError={() => setImageErrors(p => ({...p, [listing.id]: true}))} />
-                              )}
+                              <div className="adb-card-placeholder">
+                                <Home size={42} strokeWidth={1.5} />
+                              </div>
                               <span className={`adb-badge adb-badge--${sc}`}>{status}</span>
                             </div>
                             <div className="adb-card-body p-4">
@@ -315,7 +294,7 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
           />
           <div className="adb-listings-grid gap-6">
             {loading
-              ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+              ? <div style={{gridColumn: '1 / -1'}}><LoadingScreen /></div>
               : filteredListings.length === 0
                 ? (
                     <div style={{gridColumn: '1 / -1', textAlign: 'center', padding: '80px 20px', color: '#94a3b8', background: '#000000', borderRadius: '12px', border: '1px solid #1e293b'}}>
@@ -327,27 +306,12 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
                     const aiData = getGeminiListingData(listing.id);
                     const status = aiData?.status || 'Unavailable';
                     const sc = status.toLowerCase();
-                    const isExternal = listing.imageId.startsWith('http');
-                    let displayImage: any = null;
-                    if (!isExternal) {
-                      displayImage = cld.image(listing.imageId)
-                        .resize(fill().width(400).height(240))
-                        .delivery(format(auto()))
-                        .delivery(quality(autoQuality()));
-                    }
                     return (
                       <div key={listing.id} className={`adb-card adb-card--large status-${sc} ${selectedListingId === listing.id ? 'adb-card--selected' : ''}`} onClick={() => setSelectedListingId(listing.id)}>
                         <div className="adb-card-img">
-                          {imageErrors[listing.id] ? (
-                            <div className="w-full h-48 bg-slate-800 flex flex-col items-center justify-center text-slate-400">
-                              <Building size={24} className="mb-2 opacity-50" />
-                              <span className="text-xs">No Image Provided</span>
-                            </div>
-                          ) : isExternal ? (
-                            <img src={listing.imageId} alt={listing.address} loading="lazy" onError={() => setImageErrors(p => ({...p, [listing.id]: true}))} />
-                          ) : (
-                            <AdvancedImage cldImg={displayImage} plugins={[placeholder({ mode: 'blur' }), lazyload()]} alt={listing.address} onError={() => setImageErrors(p => ({...p, [listing.id]: true}))} />
-                          )}
+                          <div className="adb-card-placeholder">
+                            <Home size={48} strokeWidth={1.2} />
+                          </div>
                           <span className={`adb-badge adb-badge--${sc}`}>{status}</span>
                         </div>
                         <div className="adb-card-body p-4">
