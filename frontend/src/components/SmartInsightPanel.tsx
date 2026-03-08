@@ -12,7 +12,7 @@ import type { UserLifestyle } from '../hooks/useBackboard';
 import { generatePropertyBrief } from '../services/voiceService';
 import type { PropertyBriefInput } from '../services/voiceService';
 import { MOCK_ONTARIO_LEASE } from '../data/mockLease';
-import { ExternalLink, Volume2, Flag, AlertTriangle, FileText, Mail, Lightbulb, Home, Train, ShoppingCart, Info } from 'lucide-react';
+import { ExternalLink, Volume2, Flag, AlertTriangle, FileText, Mail, Lightbulb, Home, Train, ShoppingCart, Info, Building } from 'lucide-react';
 import './SmartInsightPanel.css';
 
 interface SmartInsightPanelProps {
@@ -37,6 +37,7 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
   
   const [generatingEmail, setGeneratingEmail] = useState(false);
   const [introEmail, setIntroEmail] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
 
   if (!listing) return null;
 
@@ -222,17 +223,28 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
 
       <div className="sip-content">
         <div className="sip-hero">
-          {isExternalImage ? (
-            <img src={listing.imageId} alt={listing.address} className="sip-main-img" />
+          {imgError ? (
+            <div className="sip-main-img w-full h-48 bg-slate-800 flex flex-col items-center justify-center text-slate-400">
+              <Building size={32} className="mb-2 opacity-50" />
+              <span className="text-sm">No Image Provided</span>
+            </div>
+          ) : isExternalImage ? (
+            <img 
+              src={listing.imageId} 
+              alt={listing.address} 
+              className="sip-main-img" 
+              onError={() => setImgError(true)}
+            />
           ) : (
             <AdvancedImage
               cldImg={displayImage}
               plugins={[placeholder({ mode: 'blur' }), lazyload()]}
               alt={listing.address}
               className="sip-main-img"
+              onError={() => setImgError(true)}
             />
           )}
-          <div className={`sip-badge bg-${status.toLowerCase()}`}>{status}</div>
+          <div className={`sip-badge ${status === 'Stretch' ? 'bg-amber-100 text-amber-800 border border-amber-200' : `bg-${status.toLowerCase()}`}`}>{status}</div>
         </div>
 
         <section className="sip-section header-info">

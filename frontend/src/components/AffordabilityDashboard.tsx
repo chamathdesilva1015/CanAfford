@@ -17,7 +17,7 @@ import { ComparisonView } from './ComparisonView';
 import { SmartInsightPanel } from './SmartInsightPanel';
 import { Vault } from './Vault';
 import { SkeletonCard } from './SkeletonCard';
-import { Scale } from 'lucide-react';
+import { Scale, Building } from 'lucide-react';
 import type { UserLifestyle } from '../hooks/useBackboard';
 import './AffordabilityDashboard.css';
 
@@ -56,6 +56,9 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
   // Comparison Studio State
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
+  
+  // Image Fallback State
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   const targetCity = filters.city !== 'All' ? filters.city : (cities[0] || 'Toronto');
 
@@ -72,75 +75,66 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
 
   const [validListings, setValidListings] = useState<VerifiedListing[]>([]);
 
-  useEffect(() => {
-    const fetchAndAnalyze = async () => {
-      if (!budget || budget <= 0 || !cities || cities.length === 0) return;
+  const handleExecuteSearch = async () => {
+    if (!budget || budget <= 0 || !cities || cities.length === 0) return;
+    
+    const cacheKey = `canAfford_v5_live_gemini_${budget}_${targetCity}_${lifestyle.commuteType}_${lifestyle.dietaryFocus}`;
+    
+    // We intentionally ignore cache on explicit search to allow the user to refresh the market.
+    
+    setLoading(true);
+    
+    try {
+      toast('Scanning live market with Google Search...', { icon: undefined, id: 'live-market-search' });
       
-      // We use the absolute budget directly as the limiter
-      // Cache version updated to v2 to invalidate the bugged trust-score constants from previous runs
-      const cacheKey = `canAfford_v2_live_gemini_${budget}_${targetCity}_${lifestyle.commuteType}_${lifestyle.dietaryFocus}`;
-      
-      const cached = localStorage.getItem(cacheKey);
-      
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          if (parsed.validListings && parsed.analysis) {
-            setValidListings(parsed.validListings);
-            setAnalysis(parsed.analysis);
-            return;
-          }
-        } catch (e) {
-          localStorage.removeItem(cacheKey);
-        }
+      const marketData = await fetchLiveMarketData(targetCity, budget, lifestyle);
+      const { cityEconomics, listings } = marketData;
+      const fetchedListings = targetCity === 'All' 
+        ? listings 
+        : listings.filter((l: VerifiedListing) => l.city.toLowerCase().includes(targetCity.toLowerCase()));
+        
+      const strictListings = Array.from(
+        new Map(fetchedListings.map(item => {
+          const uniqueKey = item.address.replace(/[^a-zA-Z0-9]/g, '').toLowerCase().substring(0, 15);
+          return [uniqueKey, item];
+        })).values()
+      );
+        
+      setValidListings(strictListings as VerifiedListing[]);
+
+      let transitCost = cityEconomics.adultTransit;
+      if (lifestyle.commuteType === 'Car') {
+        transitCost = 250; 
+      } else if (lifestyle.isStudent) {
+        transitCost = cityEconomics.studentTransit;
       }
 
-      setLoading(true);
-      
-      try {
-        toast('Scanning live market with Google Search...', { icon: undefined, id: 'live-market-search' });
-        
-        // 1. Fetch live market config (Listings + 2026 City Economics) using the target budget
-        const marketData = await fetchLiveMarketData(targetCity, budget);
-        const { cityEconomics, listings } = marketData;
-        const strictListings = targetCity === 'All' 
-          ? listings 
-          : listings.filter((l: VerifiedListing) => l.city.toLowerCase().includes(targetCity.toLowerCase()));
+      const calculateCommuteTime = (lat: number, lng: number, destination: string, mode: string) => {
+        if (!destination) return 30; 
+        const seedStr = lat.toString() + lng.toString() + destination;
+        let hash = 0;
+        for (let i = 0; i < seedStr.length; i++) {
+          hash = seedStr.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const baseMinutes = 15 + (Math.abs(hash) % 45); 
+        return mode === 'Car' ? Math.max(10, Math.round(baseMinutes * 0.6)) : baseMinutes;
+      };
+
+      let groceryCost = cityEconomics.grocery;
+      if (lifestyle.dietaryFocus === 'Budget') groceryCost = Math.round(cityEconomics.grocery * 0.8);
+      if (lifestyle.dietaryFocus === 'Family' || !lifestyle.livesAlone) groceryCost = Math.round(cityEconomics.grocery * 1.5);
+
+      const generatedAnalysis: GeminiAnalysis = {
+        cityEconomics,
+        listings: strictListings.map((r: VerifiedListing) => {
+          const trueCost = r.verifiedRent + transitCost + groceryCost;
           
-        setValidListings(strictListings);
+          let status: 'Affordable' | 'Stretch' | 'Unavailable' = 'Affordable';
+          if (trueCost > budget * 1.1) status = 'Unavailable';
+          else if (trueCost > budget) status = 'Stretch';
 
-        // 2. Deterministic UI Math evaluator using live Gemini Economics
-        const transitCost = lifestyle.commuteType === 'Car' 
-          ? 250 // Flat estimate for gas/parking
-          : (lifestyle.isStudent ? cityEconomics.studentTransit : cityEconomics.adultTransit);
-
-        // Simulated geographic string-distance math
-        const calculateCommuteTime = (lat: number, lng: number, destination: string, mode: string) => {
-          if (!destination) return 30; // default fallback
-          // Mock engine: build a stable seed from the coordinates and string
-          const seedStr = lat.toString() + lng.toString() + destination;
-          let hash = 0;
-          for (let i = 0; i < seedStr.length; i++) {
-            hash = seedStr.charCodeAt(i) + ((hash << 5) - hash);
-          }
-          const baseMinutes = 15 + (Math.abs(hash) % 45); // Range: 15 to 60 mins
-          return mode === 'Car' ? Math.max(10, Math.round(baseMinutes * 0.6)) : baseMinutes;
-        };
-
-        let groceryCost = cityEconomics.grocery;
-        if (lifestyle.dietaryFocus === 'Budget') groceryCost = Math.round(cityEconomics.grocery * 0.8);
-        if (lifestyle.dietaryFocus === 'Family' || !lifestyle.livesAlone) groceryCost = Math.round(cityEconomics.grocery * 1.5);
-
-        const generatedAnalysis: GeminiAnalysis = {
-          cityEconomics,
-          listings: strictListings.map((r: VerifiedListing) => {
-            const trueCost = r.verifiedRent + transitCost + groceryCost;
-            
-            let status: 'Affordable' | 'Stretch' | 'Unavailable' = 'Affordable';
-            if (trueCost > budget * 1.1) status = 'Unavailable';
-            else if (trueCost > budget) status = 'Stretch';
-
-            let survivalTip = '';
+          let survivalTip = r.financialInsight || '';
+          if (!survivalTip) {
             if (lifestyle.commuteType === 'Car') {
               survivalTip = `We added an estimated $250 for gas/parking. Note: Base rent is $${r.verifiedRent}, but parking is rarely included in ${targetCity}.`;
             } else if (lifestyle.isStudent) {
@@ -148,46 +142,49 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
             } else {
               survivalTip = `We added $${transitCost} for the standard ${cityEconomics.transitName} pass in ${targetCity}.`;
             }
+          }
 
-            return {
-              id: r.id,
-              status,
-              calculatedTrueCost: trueCost,
-              calculatedCommuteTime: calculateCommuteTime(r.lat, r.lng, lifestyle.isStudent && lifestyle.university ? lifestyle.university : lifestyle.workLocation, lifestyle.commuteType),
-              mathBreakdown: { 
-                rent: r.verifiedRent, 
-                transit: transitCost, 
-                groceries: groceryCost,
-                transitSource: cityEconomics.transitName,
-                grocerySource: cityEconomics.grocerySource
-              },
-              survivalTip: survivalTip
-            };
-          })
-        };
+          return {
+            id: r.id,
+            status,
+            calculatedTrueCost: trueCost,
+            calculatedCommuteTime: calculateCommuteTime(r.lat, r.lng, lifestyle.isStudent && lifestyle.university ? lifestyle.university : (lifestyle.workLocation || `${targetCity} Geographic Center`), lifestyle.commuteType),
+            mathBreakdown: { 
+              rent: r.verifiedRent, 
+              transit: transitCost, 
+              groceries: groceryCost,
+              transitSource: cityEconomics.transitName,
+              grocerySource: cityEconomics.grocerySource
+            },
+            survivalTip: survivalTip
+          };
+        })
+      };
 
-        setAnalysis(generatedAnalysis);
-        
-        localStorage.setItem(cacheKey, JSON.stringify({
-          validListings: strictListings,
-          analysis: generatedAnalysis
-        }));
-        
-        toast.success(`Found ${strictListings.length} live listings with 2026 economic data`);
-      } catch (err: any) {
-        console.error("Live Market Fetch Error:", err.message);
-        toast.error(`Market Search failed: ${err.message}`, { id: 'api-error' });
-      } finally {
-        setLoading(false);
-      }
-    };
+      setAnalysis(generatedAnalysis);
+      
+      localStorage.setItem(cacheKey, JSON.stringify({
+        validListings: strictListings,
+        analysis: generatedAnalysis
+      }));
+      
+      toast.success(`Found ${strictListings.length} live listings with 2026 economic data`);
+    } catch (err: any) {
+      console.error("Live Market Fetch Error:", err.message);
+      toast.error(`Market Search failed: ${err.message}`, { id: 'api-error' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const timeoutId = setTimeout(() => {
-      fetchAndAnalyze();
-    }, 1500);
-
-    return () => clearTimeout(timeoutId);
-  }, [budget, cities, lifestyle, filters.city]);
+  // Initial load only
+  useEffect(() => {
+    // Only fetch if we have absolutely no listings securely cached for this session yet
+    if (validListings.length === 0) {
+      handleExecuteSearch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // We remove the hard return for loading/error so the skeleton can render within the holy grail structure
   
@@ -197,13 +194,15 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
       // 1. Hard UI Filters (City)
       if (filters.city !== 'All' && !listing.city.toLowerCase().includes(filters.city.toLowerCase())) return false;
 
-      // The Two-Step Engine Pipeline explicitly mandates we NEVER hide a listing
-      // just because the evaluated True Cost blows the budget. We render it and
-      // label it "Stretch" or "Unavailable" to show the user the math.
+      // 2. Hide Unavailable if requested
+      if (filters.trueCostOnly) {
+        const aiData = analysis?.listings.find(a => a.id === listing.id);
+        if (aiData && aiData.status === 'Unavailable') return false;
+      }
       
       return true;
     });
-  }, [filters, validListings]);
+  }, [filters, validListings, analysis]);
 
   // Extract true costs mapped safely
   const trueCostsMap: Record<string, number> = {};
@@ -221,7 +220,12 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
         <>
           <div className="adb-explore-layout">
             <aside className="adb-sidebar">
-              <SearchFilters filters={filters} setFilters={setFilters} />
+              <SearchFilters 
+                filters={filters} 
+                setFilters={setFilters} 
+                onExecuteSearch={handleExecuteSearch} 
+                isLoading={loading} 
+              />
             </aside>
             <main className="adb-explore-main">
               <div className="adb-map-wrap">
@@ -232,7 +236,7 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
                   activeCity={targetCity}
                 />
               </div>
-              <div className="adb-card-grid">
+              <div className="adb-card-grid gap-6">
                 {loading
                   ? Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
                   : filteredListings.length === 0
@@ -257,17 +261,26 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
                         return (
                           <div key={listing.id} className={`adb-card status-${sc} ${selectedListingId === listing.id ? 'adb-card--selected' : ''}`} onClick={() => setSelectedListingId(listing.id)}>
                             <div className="adb-card-img">
-                              {isExternal ? <img src={listing.imageId} alt={listing.address} loading="lazy" /> : <AdvancedImage cldImg={displayImage} plugins={[placeholder({ mode: 'blur' }), lazyload()]} alt={listing.address} />}
+                              {imageErrors[listing.id] ? (
+                                <div className="w-full h-48 bg-slate-800 flex flex-col items-center justify-center text-slate-400">
+                                  <Building size={24} className="mb-2 opacity-50" />
+                                  <span className="text-xs">No Image Provided</span>
+                                </div>
+                              ) : isExternal ? (
+                                <img src={listing.imageId} alt={listing.address} loading="lazy" onError={() => setImageErrors(p => ({...p, [listing.id]: true}))} />
+                              ) : (
+                                <AdvancedImage cldImg={displayImage} plugins={[placeholder({ mode: 'blur' }), lazyload()]} alt={listing.address} onError={() => setImageErrors(p => ({...p, [listing.id]: true}))} />
+                              )}
                               <span className={`adb-badge adb-badge--${sc}`}>{status}</span>
                             </div>
-                            <div className="adb-card-body">
-                              <p className="adb-card-price" style={{marginBottom: '2px'}}>${Math.round(aiData?.calculatedTrueCost || listing.verifiedRent)}<span>/mo Total</span></p>
+                            <div className="adb-card-body p-4">
+                              <p className="adb-card-price pr-20" style={{marginBottom: '2px'}}>${Math.round(aiData?.calculatedTrueCost || listing.verifiedRent)}<span>/mo Total</span></p>
                               {aiData && (
-                                <p style={{fontSize: '0.65rem', color: '#64748b', marginBottom: '8px', lineHeight: 1.3}}>
-                                  Rent: ${aiData.mathBreakdown.rent} | Transit: ${aiData.mathBreakdown.transit} | Groceries: ${aiData.mathBreakdown.groceries}
+                                <p className="text-slate-400 truncate" style={{fontSize: '0.65rem', marginBottom: '8px', lineHeight: 1.3}}>
+                                  Rent: ${aiData.mathBreakdown.rent} | Transit: ${aiData.mathBreakdown.transit} | Food: ${aiData.mathBreakdown.groceries}
                                 </p>
                               )}
-                              <p className="adb-card-addr">{listing.address}</p>
+                              <p className="adb-card-addr text-slate-300 truncate">{listing.address}</p>
                               <label className="adb-compare-chk" onClick={e => e.stopPropagation()}>
                                 <input type="checkbox" checked={compareIds.includes(listing.id)} onChange={() => handleToggleCompare(listing.id)} /> Compare
                               </label>
@@ -294,8 +307,13 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
             <h2>All Listings</h2>
             <p>{filteredListings.length} result{filteredListings.length !== 1 ? 's' : ''} · {cities.join(', ')}</p>
           </div>
-          <SearchFilters filters={filters} setFilters={setFilters} />
-          <div className="adb-listings-grid">
+          <SearchFilters 
+            filters={filters} 
+            setFilters={setFilters} 
+            onExecuteSearch={handleExecuteSearch} 
+            isLoading={loading} 
+          />
+          <div className="adb-listings-grid gap-6">
             {loading
               ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
               : filteredListings.length === 0
@@ -320,19 +338,26 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
                     return (
                       <div key={listing.id} className={`adb-card adb-card--large status-${sc} ${selectedListingId === listing.id ? 'adb-card--selected' : ''}`} onClick={() => setSelectedListingId(listing.id)}>
                         <div className="adb-card-img">
-                          {isExternal ? <img src={listing.imageId} alt={listing.address} loading="lazy" /> : <AdvancedImage cldImg={displayImage} plugins={[placeholder({ mode: 'blur' }), lazyload()]} alt={listing.address} />}
+                          {imageErrors[listing.id] ? (
+                            <div className="w-full h-48 bg-slate-800 flex flex-col items-center justify-center text-slate-400">
+                              <Building size={24} className="mb-2 opacity-50" />
+                              <span className="text-xs">No Image Provided</span>
+                            </div>
+                          ) : isExternal ? (
+                            <img src={listing.imageId} alt={listing.address} loading="lazy" onError={() => setImageErrors(p => ({...p, [listing.id]: true}))} />
+                          ) : (
+                            <AdvancedImage cldImg={displayImage} plugins={[placeholder({ mode: 'blur' }), lazyload()]} alt={listing.address} onError={() => setImageErrors(p => ({...p, [listing.id]: true}))} />
+                          )}
                           <span className={`adb-badge adb-badge--${sc}`}>{status}</span>
                         </div>
-                        <div className="adb-card-body">
-                          <p className="adb-card-price" style={{marginBottom: '2px'}}>${Math.round(aiData?.calculatedTrueCost || listing.verifiedRent)}<span>/mo Total</span></p>
+                        <div className="adb-card-body p-4">
+                          <p className="adb-card-price pr-20" style={{marginBottom: '2px'}}>${Math.round(aiData?.calculatedTrueCost || listing.verifiedRent)}<span>/mo Total</span></p>
                           {aiData && (
-                            <div style={{fontSize: '0.72rem', color: '#64748b', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-                              <span><strong>Rent:</strong> ${aiData.mathBreakdown.rent}</span>
-                              <span style={{color: '#00ff87'}}><strong>Transit:</strong> ${aiData.mathBreakdown.transit} <span style={{fontSize: '0.65rem'}}>({aiData.mathBreakdown.transitSource})</span></span>
-                              <span style={{color: '#f87171'}}><strong>Food:</strong> ${aiData.mathBreakdown.groceries} <span style={{fontSize: '0.65rem'}}>({aiData.mathBreakdown.grocerySource})</span></span>
+                            <div className="text-slate-400 truncate" style={{fontSize: '0.72rem', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
+                              <span>Rent: ${aiData.mathBreakdown.rent} | Transit: ${aiData.mathBreakdown.transit} | Food: ${aiData.mathBreakdown.groceries}</span>
                             </div>
                           )}
-                          <p className="adb-card-addr">{listing.address}, {listing.city}</p>
+                          <p className="adb-card-addr text-slate-300 truncate">{listing.address}, {listing.city}</p>
                           <label className="adb-compare-chk" onClick={e => e.stopPropagation()}>
                             <input type="checkbox" checked={compareIds.includes(listing.id)} onChange={() => handleToggleCompare(listing.id)} /> Compare
                           </label>

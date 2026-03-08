@@ -25,6 +25,7 @@ export interface VerifiedListing {
   lat: number;
   lng: number;
   trustScore: number;
+  financialInsight?: string;
   communityNotes: string[];
 }
 
@@ -41,7 +42,7 @@ export interface LiveMarketResponse {
   listings: VerifiedListing[];
 }
 
-export const fetchLiveMarketData = async (city: string, maxBudget: number): Promise<LiveMarketResponse> => {
+export const fetchLiveMarketData = async (city: string, maxBudget: number, lifestyle?: any): Promise<LiveMarketResponse> => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) throw new Error("Missing VITE_GEMINI_API_KEY");
 
@@ -56,16 +57,27 @@ export const fetchLiveMarketData = async (city: string, maxBudget: number): Prom
     : "Toronto, Ottawa, Kitchener";
 
   const cityInstruction = city === 'All' 
-    ? 'Search for a comprehensive list (exactly 10 to 15) of active residential rental listings across major cities in Ontario (e.g., Toronto, Guelph, Ottawa, Hamilton).'
+    ? 'Search for active residential rental listings across major cities in Ontario.'
     : `CRITICAL: You must ONLY return properties located in ${city}, Ontario. Exclude ${exclusions}, or any other cities.`;
 
-  const prompt = `You are a strict data-extraction API. Your task is to use Google Search to find active rental listings based on the user's exact parameters. You MUST return an array of EXACTLY 10 to 15 unique listings. Returning 3 listings is a failure. Returning 0 listings is a failure. Use 2026 economic data.
+  let preferenceString = "";
+  if (lifestyle) {
+    if (lifestyle.isStudent && lifestyle.university) preferenceString += `\n- The user is a student attending: ${lifestyle.university}.`;
+    if (!lifestyle.isStudent && lifestyle.workLocation) preferenceString += `\n- The user works at professional location: ${lifestyle.workLocation}.`;
+    if (lifestyle.dietaryFocus) preferenceString += `\n- Dietary focus: ${lifestyle.dietaryFocus}.`;
+    if (lifestyle.commuteType) preferenceString += `\n- Preferred commute mode: ${lifestyle.commuteType}.`;
+  }
+
+  const prompt = `You are a strict data-extraction API. Your task is to use Google Search to find active rental listings based on the user's exact parameters. Return as many valid listings as you can find, up to a maximum of 15. Returning fewer listings is acceptable if the market is sparse, but do your best to find valid matches. Use 2026 economic data.
   
 ${cityInstruction}
+${preferenceString}
   
 Execute your Google Search using this exact query: "Apartments and rooms for rent in ${city === 'All' ? 'Ontario' : city} around $${maxBudget}". Find listings centered around a target budget of $${maxBudget}. Include properties up to 15% above this budget to demonstrate stretch options, and properties below it. Do NOT artificially cap the search strictly under the budget.
 
 CRITICAL SEARCH RULE: Do NOT apply any lifestyle, dietary, or transit filters to the search query itself. Only filter by geography and base rent price.
+
+CRITICAL ANTI-RECITATION RULE: You are strictly forbidden from copying sentences or paragraphs verbatim from the search results. You must synthesize and paraphrase all property descriptions, summaries, and survival tips into your own words. You may only extract exact values for addresses, numbers, and URLs.
 
 ZERO-MODIFICATION RULE: Do NOT smooth, round, estimate, or convert any price. Extract the exact number(s) shown.
 
@@ -79,7 +91,7 @@ Research the 2026 cost of living for ${city}.
 
 TASK 2: RENTAL LISTINGS (comprehensive search)
 CRITICAL: Only extract listings where the advertised base rent is centered around the target of $${maxBudget}. You may include properties up to 15% OVER this budget, but the majority should be near or below it.
-You MUST return an array of EXACTLY 10 to 15 unique listings.
+Return up to 15 valid, unique real-world listings. If you can only find 3, return 3. Do NOT hallucinate fake properties to fill space.
 - If ONE price: return "singlePrice": 2250, and set "priceRange": null.
 - If a RANGE: return "priceRange": {"min": 1677, "max": 2077}, and set "singlePrice": null.
 
@@ -108,18 +120,29 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
       "sourceUrl": string,
       "sourceName": string,
       "verificationSource": string,
-      "description": string (Must be a unique, property-specific description extracted from the actual ad. Do NOT use generic placeholder text or copy descriptions across multiple properties.),
+      "description": string (Must be a unique, synthesized description in your own words. Extremely brief, maximum one short sentence. e.g. 'A 1-bedroom apartment located near downtown transit.'),
       "imageUrl": string (direct URL to a real photo of the property, no placeholders),
       "lat": number,
       "lng": number,
       "trustScore": number (score from 1 to 100, rate the legitimacy of the source, e.g. 95 for realtor.ca, 40 for Kijiji),
+      "financialInsight": string (Only generate personalized tips based on the preferences the user explicitly provided. If they did not specify a diet or a commute destination, do not invent advice about groceries or transit times. Focus the tip purely on the rent value and the neighborhood.),
       "communityNotes": [string, string]
     }
   ]
 }`;
 
-  const result = await model.generateContent(prompt);
-  const responseText = result.response.text();
+  let result;
+  let responseText = "";
+  try {
+    result = await model.generateContent(prompt);
+    responseText = result.response.text();
+  } catch (error: any) {
+    if (error.message && error.message.includes('RECITATION')) {
+      console.warn("Gemini Safety Block: Candidate was blocked due to RECITATION. Returning empty array.");
+      return { cityEconomics: { adultTransit: 156, studentTransit: 128, transitName: 'Standard Pass', grocery: 350, grocerySource: 'Estimate' }, listings: [] };
+    }
+    throw error;
+  }
 
   let sourceCitations: string[] = [];
   let groundingSearchUrl: string | undefined;
@@ -143,8 +166,9 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
     throw new Error("Invalid format returned from Gemini Search.");
   }
   
-  if (!parsed.listings || parsed.listings.length === 0) {
-    throw new Error("Gemini yielded 0 results for these constraints.");
+  
+  if (!parsed.listings) {
+    parsed.listings = []; // Graceful fallback
   }
 
   const listings: VerifiedListing[] = parsed.listings.map((item: any, index: number) => {
@@ -192,8 +216,8 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
       'https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
       'https://images.unsplash.com/photo-1484154218962-a197022b5858?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'
     ];
-    // Use the index to predictably assign a realistic placeholder if Gemini's imageUrl is broken
-    const finalImage = item.imageUrl || item.imageId || fallbackImages[index % fallbackImages.length];
+    // Use the index to predictably assign a realistic placeholder because LLM generated image URLs are frequently broken/404.
+    const finalImage = fallbackImages[index % fallbackImages.length];
 
     return {
       id: item.id || `live-${index}`,
@@ -211,6 +235,7 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
       lat: item.lat || 43.6532,
       lng: item.lng || -79.3832,
       trustScore: (item.trustScore && item.trustScore > 10) ? item.trustScore : Math.floor(Math.random() * 30) + 65, // ensure it's out of 100
+      financialInsight: item.financialInsight || 'Pricing looks standard for this neighborhood.',
       communityNotes: item.communityNotes || ['Live fetched data', 'Real-time market rate']
     } as VerifiedListing;
   });
