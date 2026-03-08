@@ -12,8 +12,10 @@ import { SmartInsightPanel } from './SmartInsightPanel';
 import { Vault } from './Vault';
 import { AdvocateTab } from './AdvocateTab';
 import { LoadingScreen } from './LoadingScreen';
-import { Scale, Home } from 'lucide-react';
+import { Scale, Home, Heart, Sparkles, Brain } from 'lucide-react';
 import type { UserLifestyle } from '../hooks/useBackboard';
+import type { RevealedPreferencesResult } from '../services/geminiService';
+import { analyzeRevealedPreferences } from '../services/geminiService';
 import './AffordabilityDashboard.css';
 
 export interface GeminiAnalysis {
@@ -41,7 +43,7 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
   const [analysis, setAnalysis] = useState<GeminiAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   
-  const { flagListing, flaggedListings, vaultStatus, toggleVaultDoc } = useBackboard();
+  const { flagListing, flaggedListings, vaultStatus, toggleVaultDoc, savedListings, saveListing, aiCalibratedFields, syncAiCalibratedFields, saveUserBudget } = useBackboard();
 
   // New Dashboard Overhaul State
   const [filters, setFilters] = useState<FilterState>({
@@ -55,6 +57,8 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
   // Comparison Studio State
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
+  const [revealedPrefs, setRevealedPrefs] = useState<RevealedPreferencesResult | null>(null);
+  const [analyzingPrefs, setAnalyzingPrefs] = useState(false);
   
   const targetCity = filters.city !== 'All' ? filters.city : (cities[0] || 'Toronto');
 
@@ -272,9 +276,18 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
                                 </p>
                               )}
                               <p className="adb-card-addr text-slate-300 truncate">{listing.address}</p>
-                              <label className="adb-compare-chk" onClick={e => e.stopPropagation()}>
-                                <input type="checkbox" checked={compareIds.includes(listing.id)} onChange={() => handleToggleCompare(listing.id)} /> Compare
-                              </label>
+                              <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px'}}>
+                                <label className="adb-compare-chk" onClick={e => e.stopPropagation()}>
+                                  <input type="checkbox" checked={compareIds.includes(listing.id)} onChange={() => handleToggleCompare(listing.id)} /> Compare
+                                </label>
+                                <button 
+                                  className={`adb-save-btn ${savedListings.find(s => s.id === listing.id) ? 'saved' : ''}`}
+                                  onClick={(e) => { e.stopPropagation(); saveListing(listing); }}
+                                  title={savedListings.find(s => s.id === listing.id) ? 'Unsave' : 'Save'}
+                                >
+                                  <Heart size={13} fill={savedListings.find(s => s.id === listing.id) ? '#ef4444' : 'none'} color={savedListings.find(s => s.id === listing.id) ? '#ef4444' : '#64748b'} />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -355,10 +368,118 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
       {activeTab === 'vault' && (
         <div className="adb-vault-tab">
           <div className="adb-tab-header">
-            <h2>Application Vault</h2>
-            <p>Manage your mandatory Ontario rental application documents.</p>
+            <h2>Behavioral Intelligence Vault</h2>
+            <p>Your stated preferences vs. what your saving behavior reveals.</p>
           </div>
-          <div className="adb-vault-layout">
+
+          {/* ── BEHAVIORAL SPLIT PANE ── */}
+          <div className="adb-behavioral-dashboard">
+            <div className="adb-pref-pane adb-pref-stated">
+              <h4><Brain size={15} /> Stated Preferences (Backboard Memory)</h4>
+              <ul className="adb-pref-list">
+                <li><strong>Budget:</strong> ${budget}/mo {aiCalibratedFields.includes('budget') && <span className="ai-calibrated-badge">✨ AI Calibrated</span>}</li>
+                <li><strong>Commute:</strong> {lifestyle.commuteType} {aiCalibratedFields.includes('commuteType') && <span className="ai-calibrated-badge">✨ AI Calibrated</span>}</li>
+                <li><strong>Diet Focus:</strong> {lifestyle.dietaryFocus} {aiCalibratedFields.includes('dietaryFocus') && <span className="ai-calibrated-badge">✨ AI Calibrated</span>}</li>
+                <li><strong>Living:</strong> {lifestyle.livesAlone ? 'Solo' : 'Shared'} {aiCalibratedFields.includes('livesAlone') && <span className="ai-calibrated-badge">✨ AI Calibrated</span>}</li>
+                <li><strong>Student:</strong> {lifestyle.isStudent ? `Yes (${lifestyle.university})` : 'No'}</li>
+                <li><strong>Cities:</strong> {cities.join(', ')}</li>
+              </ul>
+            </div>
+
+            <div className="adb-pref-pane adb-pref-revealed">
+              <h4><Sparkles size={15} /> Revealed Preferences (Behavioral AI)</h4>
+              {savedListings.length < 3 ? (
+                <div className="adb-pref-empty">
+                  <Heart size={32} strokeWidth={1} color="#334155" />
+                  <p>Save at least <strong>3 properties</strong> to unlock AI behavioral analysis.</p>
+                  <p className="adb-pref-count">{savedListings.length} / 3 saved</p>
+                </div>
+              ) : analyzingPrefs ? (
+                <div className="adb-pref-empty">
+                  <span className="btn-spinner" style={{width: 28, height: 28}} />
+                  <p>Analyzing your saving behavior...</p>
+                </div>
+              ) : revealedPrefs ? (
+                <div className="adb-revealed-results">
+                  <p className="adb-revealed-insight">{revealedPrefs.revealedInsights}</p>
+                  <ul className="adb-pref-list">
+                    <li><strong>Avg. Saved Rent:</strong> <span className="text-emerald-400">${revealedPrefs.avgSavedRent}/mo</span></li>
+                    <li><strong>Preferred Type:</strong> {revealedPrefs.preferredPropertyType}</li>
+                    {revealedPrefs.detectedTraits.map((trait, i) => (
+                      <li key={i} className="adb-trait-tag">{trait}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="adb-pref-empty">
+                  <Sparkles size={32} strokeWidth={1} color="#334155" />
+                  <p>Click "Analyze" below to run behavioral comparison.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── SYNC BUTTON ── */}
+          {savedListings.length >= 3 && (
+            <div className="adb-sync-row">
+              {!revealedPrefs ? (
+                <button 
+                  className="adb-sync-btn adb-sync-analyze"
+                  onClick={async () => {
+                    setAnalyzingPrefs(true);
+                    try {
+                      const result = await analyzeRevealedPreferences(
+                        savedListings.map(l => ({ address: l.address, verifiedRent: l.verifiedRent, lat: l.lat, lng: l.lng, beds: l.beds, type: l.type })),
+                        { budget, commuteType: lifestyle.commuteType, dietaryFocus: lifestyle.dietaryFocus, livesAlone: lifestyle.livesAlone, isStudent: lifestyle.isStudent, workLocation: lifestyle.workLocation }
+                      );
+                      setRevealedPrefs(result);
+                      toast.success('Behavioral analysis complete!');
+                    } catch (err: any) {
+                      toast.error(err.message);
+                    } finally {
+                      setAnalyzingPrefs(false);
+                    }
+                  }}
+                  disabled={analyzingPrefs}
+                >
+                  {analyzingPrefs ? <><span className="btn-spinner" /> Analyzing...</> : <><Brain size={16} /> Analyze Saved Behavior</>}
+                </button>
+              ) : (
+                <button 
+                  className="adb-sync-btn"
+                  onClick={async () => {
+                    const updates = revealedPrefs.suggestedUpdates;
+                    const newBudget = updates.budget || budget;
+                    const newLifestyle = { ...lifestyle };
+                    const calibratedFields: string[] = [];
+
+                    if (updates.budget && updates.budget !== budget) calibratedFields.push('budget');
+                    if (updates.commuteType && updates.commuteType !== lifestyle.commuteType) {
+                      newLifestyle.commuteType = updates.commuteType as any;
+                      calibratedFields.push('commuteType');
+                    }
+                    if (updates.dietaryFocus && updates.dietaryFocus !== lifestyle.dietaryFocus) {
+                      newLifestyle.dietaryFocus = updates.dietaryFocus as any;
+                      calibratedFields.push('dietaryFocus');
+                    }
+                    if (updates.livesAlone != null && updates.livesAlone !== lifestyle.livesAlone) {
+                      newLifestyle.livesAlone = updates.livesAlone;
+                      calibratedFields.push('livesAlone');
+                    }
+
+                    await saveUserBudget('default_user', newBudget, cities, newLifestyle);
+                    syncAiCalibratedFields(calibratedFields);
+                    toast.success('Memory Updated: Backboard synced with your behavioral data.', { icon: '✨', duration: 4000 });
+                  }}
+                >
+                  <Sparkles size={16} /> Sync Backboard to Reality
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── ORIGINAL VAULT DOCUMENTS ── */}
+          <div className="adb-vault-layout" style={{marginTop: '24px'}}>
             <Vault vaultStatus={vaultStatus} onToggleDoc={toggleVaultDoc} />
             <div className="adb-vault-health">
               <h3>Document Health</h3>

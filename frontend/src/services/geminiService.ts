@@ -24,6 +24,8 @@ export interface VerifiedListing {
   imageId: string;
   lat: number;
   lng: number;
+  beds?: string;
+  type?: string;
   trustScore: number;
   financialInsight?: string;
   communityNotes: string[];
@@ -372,6 +374,71 @@ Return ONLY a raw JSON object. No Markdown.`;
     const result = await model.generateContent(prompt);
     let cleanJson = result.response.text().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     return JSON.parse(cleanJson) as LeaseAnalysis;
+  } catch (error: any) {
+    if (error.message && error.message.includes('429')) {
+      throw new Error("Gemini API Free Tier Limit Reached. Please pause for 30 seconds before searching again.");
+    }
+    throw error;
+  }
+};
+
+export interface SuggestedUpdates {
+  budget?: number;
+  commuteTolerance?: number;
+  commuteType?: string;
+  dietaryFocus?: string;
+  livesAlone?: boolean;
+}
+
+export interface RevealedPreferencesResult {
+  revealedInsights: string;
+  suggestedUpdates: SuggestedUpdates;
+  avgSavedRent: number;
+  preferredPropertyType: string;
+  detectedTraits: string[];
+}
+
+export const analyzeRevealedPreferences = async (
+  savedListings: Array<{ address: string; verifiedRent: number; lat: number; lng: number; beds?: string; type?: string }>,
+  currentBackboardState: { budget: number; commuteType: string; dietaryFocus: string; livesAlone: boolean; isStudent: boolean; workLocation: string }
+): Promise<RevealedPreferencesResult> => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Missing VITE_GEMINI_API_KEY");
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+  const prompt = `You are a behavioral economist AI. Analyze this array of saved real estate listings that a user has favorited. Calculate the average rent the user is actually saving, identify their preferred property type (Studio, 1-Bed, 2-Bed, etc.), and detect common lifestyle traits (e.g., high walkability areas, transit-heavy neighborhoods, parking availability, downtown vs. suburban preference).
+
+Compare this to their stated preferences (the "currentBackboardState") and identify discrepancies. For example, if they say their budget is $1500 but they keep saving $2100+ listings, their real budget is higher.
+
+SAVED LISTINGS:
+${JSON.stringify(savedListings, null, 2)}
+
+CURRENT STATED PREFERENCES (Backboard State):
+${JSON.stringify(currentBackboardState, null, 2)}
+
+Return ONLY a raw JSON object. No Markdown. Schema:
+{
+  "revealedInsights": "A 2-3 sentence summary of what the user ACTUALLY wants based on their behavior vs. what they stated",
+  "suggestedUpdates": {
+    "budget": number or null (the average rent they save, rounded to nearest 50),
+    "commuteTolerance": number or null (estimated max commute in minutes based on saved locations),
+    "commuteType": "Public Transit" or "Car" or null,
+    "dietaryFocus": "Budget" or "Health" or "Family" or null,
+    "livesAlone": boolean or null
+  },
+  "avgSavedRent": number,
+  "preferredPropertyType": "string (e.g. '1-Bedroom Apartment')",
+  "detectedTraits": ["array", "of", "lifestyle", "traits"]
+}
+
+Only include fields in suggestedUpdates if they DIFFER from the stated preferences. Set unchanged fields to null.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    let cleanJson = result.response.text().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(cleanJson) as RevealedPreferencesResult;
   } catch (error: any) {
     if (error.message && error.message.includes('429')) {
       throw new Error("Gemini API Free Tier Limit Reached. Please pause for 30 seconds before searching again.");

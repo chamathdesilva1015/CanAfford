@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import type { VerifiedListing } from '../services/geminiService';
 
 // We'll mock the actual API call since we don't know the exact Backboard REST structure, 
 // but we'll simulate the stateful storage mechanism using localStorage combined with a mock fetch.
@@ -23,6 +24,8 @@ export const useBackboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [flaggedListings, setFlaggedListings] = useState<string[]>([]);
   const [vaultStatus, setVaultStatus] = useState<Record<string, boolean>>({});
+  const [savedListings, setSavedListings] = useState<VerifiedListing[]>([]);
+  const [aiCalibratedFields, setAiCalibratedFields] = useState<string[]>([]);
 
   // Load flags and vault status on mount
   useEffect(() => {
@@ -33,6 +36,14 @@ export const useBackboard = () => {
     const storedVault = localStorage.getItem('canAfford_vault');
     if (storedVault) {
       setVaultStatus(JSON.parse(storedVault));
+    }
+    const storedSaved = localStorage.getItem('canAfford_savedListings');
+    if (storedSaved) {
+      setSavedListings(JSON.parse(storedSaved));
+    }
+    const storedAiFields = localStorage.getItem('canAfford_aiCalibratedFields');
+    if (storedAiFields) {
+      setAiCalibratedFields(JSON.parse(storedAiFields));
     }
   }, []);
 
@@ -119,6 +130,30 @@ export const useBackboard = () => {
     });
   }, []);
 
+  const saveListing = useCallback((listing: VerifiedListing) => {
+    setSavedListings(prev => {
+      if (prev.find(l => l.id === listing.id)) {
+        // Un-save
+        const updated = prev.filter(l => l.id !== listing.id);
+        localStorage.setItem('canAfford_savedListings', JSON.stringify(updated));
+        toast.success('Listing removed from saved');
+        return updated;
+      }
+      const updated = [...prev, listing];
+      localStorage.setItem('canAfford_savedListings', JSON.stringify(updated));
+      toast.success('Listing saved!');
+      return updated;
+    });
+  }, []);
+
+  const syncAiCalibratedFields = useCallback((fields: string[]) => {
+    setAiCalibratedFields(prev => {
+      const merged = Array.from(new Set([...prev, ...fields]));
+      localStorage.setItem('canAfford_aiCalibratedFields', JSON.stringify(merged));
+      return merged;
+    });
+  }, []);
+
   return { 
     initializeThread, 
     saveUserBudget, 
@@ -128,6 +163,10 @@ export const useBackboard = () => {
     loading, 
     error,
     vaultStatus,
-    toggleVaultDoc
+    toggleVaultDoc,
+    savedListings,
+    saveListing,
+    aiCalibratedFields,
+    syncAiCalibratedFields
   };
 };
