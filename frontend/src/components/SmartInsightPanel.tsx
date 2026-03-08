@@ -427,7 +427,7 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
                             <Link2 size={10} /> Source: {item.source.split(',')[0].trim()}
                           </a>
                         ) : (
-                          <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic', marginLeft: '19px'}}>
+                          <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#60efff', fontStyle: 'italic', marginLeft: '19px'}}>
                             <Link2 size={10} /> Source: {item.source.split(',')[0].trim()}
                           </span>
                         )
@@ -452,7 +452,7 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
                             <Link2 size={10} /> Source: {item.source.split(',')[0].trim()}
                           </a>
                         ) : (
-                          <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic', marginLeft: '19px'}}>
+                          <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#60efff', fontStyle: 'italic', marginLeft: '19px'}}>
                             <Link2 size={10} /> Source: {item.source.split(',')[0].trim()}
                           </span>
                         )
@@ -477,7 +477,7 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
                             <Link2 size={10} /> Source: {item.source.split(',')[0].trim()}
                           </a>
                         ) : (
-                          <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic', marginLeft: '19px'}}>
+                          <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#60efff', fontStyle: 'italic', marginLeft: '19px'}}>
                             <Link2 size={10} /> Source: {item.source.split(',')[0].trim()}
                           </span>
                         )
