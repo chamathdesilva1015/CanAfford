@@ -268,9 +268,15 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
   };
 };
 
+export interface ReportClaim {
+  claim: string;
+  source: string;
+  url?: string;
+}
+
 export interface NeighborhoodReport {
-  landlordReputation: string;
-  safetyProfile: string;
+  reputation: ReportClaim[];
+  safety: ReportClaim[];
   environmentalVibe: string;
 }
 
@@ -284,17 +290,23 @@ export const fetchDeepNeighborhoodReport = async (address: string, city: string)
     tools: [{ googleSearch: {} } as any]
   });
 
-  const prompt = `You are a real estate investigator. Use Google Search to investigate the immediate neighborhood surrounding ${address}, ${city}. You must return a structured JSON report containing:
-1. Landlord/Building Reputation: Summarize any found reviews, Reddit threads, or news about the property management company or building. If none exist, state "No significant negative reports found."
-2. Safety & Crime Profile: What is the general safety reputation and crime trend of this specific neighborhood?
-3. Environmental Vibe: Is it loud? Is it near green spaces? Who lives here (e.g., students, families, young professionals)?
+  const prompt = `You are a real estate investigator. Use Google Search to investigate the immediate neighborhood surrounding ${address}, ${city}. You must break down your findings into concise, actionable bullet points. For every claim you make (e.g., "Crime is 27% lower than city average"), you MUST provide the exact source name (e.g., "Toronto Police Service Data") and a URL if available.
 
 Return ONLY a raw JSON object. No Markdown. Exact schema:
 {
-  "landlordReputation": "string",
-  "safetyProfile": "string",
-  "environmentalVibe": "string"
-}`;
+  "reputation": [
+    { "claim": "concise finding about the building or landlord", "source": "source name", "url": "optional URL" }
+  ],
+  "safety": [
+    { "claim": "concise finding about neighborhood safety or crime", "source": "source name", "url": "optional URL" }
+  ],
+  "environmentalVibe": "A single 2-3 sentence summary of the environmental vibe: noise level, nearby green spaces, and who lives here (students, families, young professionals)."
+}
+
+RULES:
+- Return at least 2-4 bullet points per category.
+- If no landlord reviews exist, return a single item: { "claim": "No significant negative reports found", "source": "Google Search", "url": "" }.
+- Every claim must have a source name. URLs are strongly preferred but optional.`;
 
   try {
     const result = await model.generateContent(prompt);

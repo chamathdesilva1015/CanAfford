@@ -8,7 +8,7 @@ import type { PropertyBriefInput } from '../services/voiceService';
 import { MOCK_ONTARIO_LEASE } from '../data/mockLease';
 import { fetchDeepNeighborhoodReport } from '../services/geminiService';
 import type { NeighborhoodReport } from '../services/geminiService';
-import { ExternalLink, Volume2, Flag, AlertTriangle, FileText, Mail, Lightbulb, Home, Train, ShoppingCart, Info, Search, Copy } from 'lucide-react';
+import { ExternalLink, Volume2, Flag, AlertTriangle, FileText, Mail, Lightbulb, Home, Train, ShoppingCart, Info, Search, Copy, Link2, ChevronRight } from 'lucide-react';
 import './SmartInsightPanel.css';
 
 interface SmartInsightPanelProps {
@@ -392,18 +392,54 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
             <div className="deep-report-card">
               <h5 style={{fontSize: '0.85rem', fontWeight: 600, color: '#f8fafc', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.1)'}}>Target Deep Background Report</h5>
               
-              <div className="report-item" style={{marginBottom: '12px'}}>
-                <span className="report-label" style={{display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '4px'}}>Building/Landlord Reputation</span>
-                <p style={{fontSize: '0.8rem', lineHeight: 1.4}} className={`report-text ${deepReport.landlordReputation.toLowerCase().includes('negative') || deepReport.landlordReputation.toLowerCase().includes('issue') || deepReport.landlordReputation.toLowerCase().includes('poor') ? 'text-amber-500' : 'text-slate-200'}`}>
-                  {deepReport.landlordReputation}
-                </p>
+              <div className="report-item" style={{marginBottom: '16px'}}>
+                <span className="report-label" style={{display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '8px'}}>Building/Landlord Reputation</span>
+                <ul style={{listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                  {deepReport.reputation.map((item, idx) => (
+                    <li key={idx} style={{display: 'flex', flexDirection: 'column', gap: '3px'}}>
+                      <span style={{display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.8rem', lineHeight: 1.4, color: '#cbd5e1'}}>
+                        <ChevronRight size={13} style={{marginTop: '2px', flexShrink: 0, color: '#64748b'}} />
+                        {item.claim}
+                      </span>
+                      {item.source && (
+                        item.url ? (
+                          <a href={item.url} target="_blank" rel="noreferrer" style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic', marginLeft: '19px', textDecoration: 'none', transition: 'color 0.2s'}} onMouseEnter={e => (e.currentTarget.style.color = '#93c5fd')} onMouseLeave={e => (e.currentTarget.style.color = '#64748b')}>
+                            <Link2 size={10} /> Source: {item.source}
+                          </a>
+                        ) : (
+                          <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic', marginLeft: '19px'}}>
+                            <Link2 size={10} /> Source: {item.source}
+                          </span>
+                        )
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
               
-              <div className="report-item" style={{marginBottom: '12px'}}>
-                <span className="report-label" style={{display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '4px'}}>Safety & Crime Profile</span>
-                <p style={{fontSize: '0.8rem', lineHeight: 1.4}} className={`report-text ${deepReport.safetyProfile.toLowerCase().includes('safe') || deepReport.safetyProfile.toLowerCase().includes('low') ? 'text-teal-400' : 'text-slate-200'}`}>
-                  {deepReport.safetyProfile}
-                </p>
+              <div className="report-item" style={{marginBottom: '16px'}}>
+                <span className="report-label" style={{display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '8px'}}>Safety & Crime Profile</span>
+                <ul style={{listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                  {deepReport.safety.map((item, idx) => (
+                    <li key={idx} style={{display: 'flex', flexDirection: 'column', gap: '3px'}}>
+                      <span style={{display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.8rem', lineHeight: 1.4, color: '#cbd5e1'}}>
+                        <ChevronRight size={13} style={{marginTop: '2px', flexShrink: 0, color: '#64748b'}} />
+                        {item.claim}
+                      </span>
+                      {item.source && (
+                        item.url ? (
+                          <a href={item.url} target="_blank" rel="noreferrer" style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic', marginLeft: '19px', textDecoration: 'none', transition: 'color 0.2s'}} onMouseEnter={e => (e.currentTarget.style.color = '#93c5fd')} onMouseLeave={e => (e.currentTarget.style.color = '#64748b')}>
+                            <Link2 size={10} /> Source: {item.source}
+                          </a>
+                        ) : (
+                          <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic', marginLeft: '19px'}}>
+                            <Link2 size={10} /> Source: {item.source}
+                          </span>
+                        )
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
               
               <div className="report-item" style={{marginBottom: '12px'}}>
