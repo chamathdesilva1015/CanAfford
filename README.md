@@ -1,112 +1,135 @@
-# CanAfford: Predictive Budgeting Engine
+# CanAfford 🇨🇦
 
-<p align="center">
-  <em>A hyper-personalized rental engine that calculates your True Cost of Living.</em>
-</p>
+### Beyond the Budget. The Ultimate AI Tenant Protection & Real Estate Execution Engine.
 
-## Overview
+**CanAfford doesn't just filter rentals — it calculates the *True Cost of Living* by factoring in 2026 transit passes, grocery inflation, and commute distances, then goes further by auditing your prospective lease for illegal clauses and generating real-time neighborhood intelligence.** This is the app that turns renters from victims of hidden costs into informed, protected tenants.
 
-Traditional rental platforms only show you the **Base Rent**, leaving users blind to the hidden costs of their lifestyle, commute, and local grocery markets. **CanAfford** flips this paradigm. 
-
-By leveraging **Gemini 2.5 Flash**, CanAfford acts as a strict, localized budgeting evaluator. It searches for active listings tailored to your limits, then aggressively recalculates the actual cost of living in that precise location based on your **commute type**, **student status**, and **dietary focus**.
+> *"Ending hidden rental costs and predatory leasing in Canada."*
 
 ---
 
-## ✨ Key Features
+## ⚡ Powered By
 
-### 1. True Cost Evaluator (Two-Step Pipeline)
-Instead of relying on rigid, pre-coded databases, CanAfford uses a two-step "Fetch and Evaluate" pipeline:
-- **Dumb Fetch**: Gemini dynamically searches Google for active listings in your target city centered around your target budget (including realistic 15% stretch options).
-- **Smart Evaluate**: The React engine intercepts the listings and calculates your true personalized cost. It dynamically generates localized Transit costs (based on whether you drive, take the TTC, or rely on a U-Pass) and Grocery costs (scaled by whether you live alone, have a family, or eat on a strict budget). 
-
-### 2. Backboard "AI Memory"
-Powered by `Backboard.io`, CanAfford remembers who you are across sessions. Unlike static sliders, you declare your identity once:
-- **Occupation & School**: Selecting "Student" dynamically maps the exact universities in your search city.
-- **Granular Commute**: Provide your *exact* destination address (or campus building) for high-precision real-time geographical commute math.
-- **Dietary Focus**: Adjusts baseline local grocery inflation data to fit a "Budget", "Health", or "Family" profile.
-
-### 3. Smart Insight & Logistics Vault
-Every property comes with a **Smart Insight Panel**, detailing exact mathematical breakdown logic.
-- **ElevenLabs Integration**: Listen to a localized audio "Affordability Brief" to reduce reading fatigue.
-- **Contextual Survival Tips**: Gemini provides personalized commentary (e.g., *"We added an estimated $250 for gas/parking since you selected 'Car'—parking is rarely included in Toronto base rent."*).
-- **Lease Scanner**: Users can upload standard Ontario lease text and have Gemini explicitly flag illegal or aggressive clauses.
-
-### 4. Human-Sensing UI (Presage SDK)
-Integrated with the **Presage SDK**, CanAfford reads user stress metrics. If a user is highly stressed (Calm Mode), the UI dynamically softens—hiding terrifying financial jargon and instructing the AI to output gentle, supportive survival tips.
+| Technology | Role |
+|---|---|
+| **Google Gemini 2.5 Flash (Search Grounding)** | We do **NOT** use stale LLM training data. Every query scrapes the **live internet** for 2026 rental pricing, active listing URLs, Ontario RTA case law, and neighborhood crime stats — all in real time. |
+| **ElevenLabs AI (Text-to-Speech)** | Multimodal accessibility layer. Every property card includes an **Audio Affordability Brief** — a synthesized voice summary of the rent, commute, and neighborhood data so users can listen while browsing. |
+| **React + TypeScript** | Fully typed, component-driven SPA with modular architecture. |
+| **Leaflet.js** | Interactive geographic mapping with live coordinate plotting for every listing. |
+| **Auth0** | Secure authentication with persistent user preference storage (Memory Vault). |
+| **Node.js + Express** | Lightweight backend API for budget persistence and affordability logic. |
 
 ---
 
-## 🏗 Tech Stack & Architecture
+## 🏗️ The Arsenal — Core Features
 
-### Frontend
-- **Framework**: React + Vite (TypeScript)
-- **Styling**: Vanilla CSS utilizing CSS Grid ("Holy Grail" layouts), Tailwind-inspired utility logic, and strict WCAG accessibility profiling.
-- **Maps**: `react-leaflet` for dynamic geographical panning (`flyTo` rendering).
-- **Assets**: Cloudinary AI React SDK for image optimization; Unsplash API for dynamic real-estate imagery.
+### 📊 The True Cost Engine
 
-### Backend & Logic
-- **Server**: Node.js + Express
-- **AI / LLM**: `@google/generative-ai` (`gemini-1.5-flash-latest`)
-- **Authentication**: Auth0 JWT wrappers
-- **Testing**: Jest (`affordability.test.js` strictly validates that the financial math never hallucinates).
+Most rental apps show you **base rent** and stop there. CanAfford calculates the **actual monthly burden** by dynamically layering:
+
+- **Rent** — Extracted from live listings via Gemini Search Grounding (Realtor.ca, Rentals.ca, Kijiji)
+- **Transit** — The exact 2026 TTC Adult Pass ($156) or Student U-Pass ($128), Ottawa OC Transpo ($138.50), and more
+- **Groceries** — Statistics Canada's solo-living grocery average ($401/mo), adjusted for dietary focus (Budget / Health / Family)
+
+Every listing is classified as **Affordable**, **Stretch**, or **Unavailable** — with full math transparency on every card.
 
 ---
 
-## 🛠 Getting Started
+### 🛡️ The RTA Lease Advocate
+
+**Predatory landlords rely on tenants not knowing the law.** Our AI Paralegal scans any uploaded Ontario lease agreement and flags illegal clauses — citing the **exact section** of the Ontario Residential Tenancies Act (RTA), 2006:
+
+- ❌ **"No Pets" clauses** — Void under RTA Section 14
+- ❌ **Post-dated cheque requirements** — Illegal under RTA Section 108
+- ❌ **Damage/security deposits** beyond last month's rent — RTA Sections 105/106
+- ❌ **Forced professional cleaning** — Not enforceable under the RTA
+- ✅ **Green Flags** — Compliant clauses are also identified with RTA citations
+
+Every Red Flag includes a **clickable reference link** to the official Ontario e-Laws page. A permanent legal disclaimer ensures users verify findings with the LTB or a licensed paralegal.
+
+---
+
+### 🕵️ Neighborhood Deep-Dive
+
+Click **"Run Deep Neighborhood Background Check"** on any listing to trigger an on-demand AI investigation of the specific address:
+
+- **Landlord/Building Reputation** — Summarized Reddit threads, Google reviews, and news articles
+- **Safety & Crime Profile** — Local police data and crime trend analysis
+- **Environmental Vibe** — Noise levels, green spaces, and resident demographics
+
+Every claim is returned as a **scannable bullet point** with an inline **source citation** and optional clickable URL — no dense paragraphs, no hallucinated data.
+
+---
+
+### ⚡ Execution & Logistics Toolkit
+
+- **Roommate Pivot Toggle** — Instantly divide rent by 2 while keeping transit and groceries at the single-person rate. Watch "Unavailable" listings flip to "Affordable" in real time.
+- **1-Click Intro Email** — AI-generated, tailored introduction email to the landlord using your exact profile (Student/Professional, budget, preferences). Copy to clipboard and send.
+- **Lease Red Flag Scanner** — Available in the side panel for quick scans using a mock Ontario lease template.
+- **Audio Affordability Briefs** — ElevenLabs-powered voice summaries for every property.
+
+---
+
+## 🚀 Quick Start (For Judges)
 
 ### Prerequisites
-1. Node.js (v18+)
-2. API Keys for Gemini, Auth0, and Cloudinary.
+
+- **Node.js** v18+
+- **npm** v9+
 
 ### Installation
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/chamathdesilva1015/CanAfford.git
-   cd CanAfford
-   ```
+```bash
+# Clone the repository
+git clone https://github.com/chamathdesilva1015/CanAfford.git
+cd CanAfford
 
-2. **Install Frontend Dependencies:**
-   ```bash
-   cd frontend
-   npm install
-   ```
+# Install all dependencies (frontend + backend)
+npm run build
 
-3. **Install Backend Dependencies:**
-   ```bash
-   cd ../backend
-   npm install
-   ```
+# Start the development server
+cd frontend && npm run dev
+```
 
-4. **Environment Setup:**
-   Create a `.env` in the `frontend` folder containing:
-   ```env
-   VITE_GEMINI_API_KEY=your_google_ai_key
-   VITE_CLOUDINARY_CLOUD_NAME=your_cloud_name
-   ```
+The app will be available at **http://localhost:5173**.
 
-   Create a `.env` in the `backend` folder containing:
-   ```env
-   PORT=3000
-   GEMINI_API_KEY=your_google_ai_key
-   ```
+### Required Environment Variables
 
-5. **Run the Application (Dual-Boot):**
-   ```bash
-   # From the root directory:
-   npm run dev
-   ```
-   *The frontend will boot on `localhost:5173` and the Node API will boot on `localhost:3000` (or as configured in `.env`).*
+Create a `.env` file in the `/frontend` directory:
+
+```env
+VITE_GEMINI_API_KEY=your_google_gemini_api_key
+VITE_ELEVENLABS_API_KEY=your_elevenlabs_api_key
+VITE_CLOUDINARY_CLOUD_NAME=demo
+```
+
+> **Note:** The Gemini API key requires the **Generative Language API** enabled with Google Search Grounding capabilities. Free tier supports 15 RPM.
 
 ---
 
-## 🧠 Design Philosophy
+## 📁 Project Structure
 
-CanAfford was transitioned from a standard prototype into a premium SaaS product. 
-- **No Hallucinated Math**: The LLM is strictly forbidden from doing its own math on property limits. The UI parses explicit integers from the AI and executes deterministic local math.
-- **No Dead Ends**: Fallbacks and hardcoded dummy data were eradicated. If the AI cannot find properties matching the criteria, the UI clearly displays data-driven blank states outlining exactly why the query failed so the user can adjust effectively.
-- **Deep Routing**: URL parsing intercepts hallucinated root domains (like `rentals.ca/`) and dynamically synthesizes secure Google Search fallback links using standard property addresses, ensuring you are always one click away from the real listing.
+```
+CanAfford/
+├── frontend/          # React + TypeScript SPA
+│   ├── src/
+│   │   ├── components/    # Dashboard, Advocate, SmartInsightPanel, etc.
+│   │   ├── services/      # geminiService.ts, voiceService.ts
+│   │   ├── hooks/         # useBackboard (state management)
+│   │   └── auth/          # Auth0 provider configuration
+│   └── .env               # API keys (not committed)
+├── backend/           # Node.js + Express API
+│   ├── index.js           # Server entry point
+│   └── tests/             # Affordability logic tests
+└── package.json       # Monorepo build & start scripts
+```
 
 ---
 
-*Built with ❤️ to make renting mathematically transparent.*
+## 🏛️ Built for Ontario
+
+**Grounded in the 2026 Residential Tenancies Act. Powered by real-time Google Search Grounding. Designed to protect Canadian tenants.**
+
+---
+
+<p align="center"><strong>© 2026 CanAfford Inc.</strong> — Built with 🤖 Gemini AI & ❤️ in Ontario, Canada.</p>
