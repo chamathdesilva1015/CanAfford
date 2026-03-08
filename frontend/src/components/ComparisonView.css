@@ -1,0 +1,147 @@
+.comparison-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 2rem;
+}
+
+.comparison-modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 1100px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.comparison-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.comparison-header h2 {
+  margin: 0;
+  color: #1e293b;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.close-btn:hover {
+  color: #000000;
+}
+
+.decision-section {
+  padding: 2rem;
+  background: #fff;
+}
+
+.decision-loading {
+  text-align: center;
+  padding: 2rem;
+  color: #3b82f6;
+  font-weight: 500;
+  animation: pulse 2s infinite;
+}
+
+.decision-error {
+  padding: 1rem;
+  background: #fee2e2;
+  color: #b91c1c;
+  border-radius: 8px;
+}
+
+.decision-summary {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #22c55e;
+}
+
+.decision-summary h3 {
+  margin-top: 0;
+  color: #166534;
+  margin-bottom: 0.5rem;
+}
+
+.decision-summary p {
+  margin: 0;
+  color: #15803d;
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
+
+.comparison-table-wrapper {
+  padding: 0 2rem 2rem 2rem;
+  overflow-x: auto;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.comparison-table th, .comparison-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  min-width: 250px;
+}
+
+.comparison-table th {
+  background: #f1f5f9;
+  font-weight: 600;
+  color: #334155;
+}
+
+.comparison-table td:first-child {
+  background: #f8fafc;
+  font-weight: 500;
+  width: 150px;
+  min-width: 150px;
+}
+
+.comparison-img {
+  width: 100%;
+  border-radius: 4px;
+}
+
+.true-cost-cell {
+  font-weight: bold;
+  color: #b91c1c;
+}
+
+.score-high { color: #15803d; font-weight: bold; }
+.score-med { color: #b45309; font-weight: bold; }
+.score-low { color: #b91c1c; font-weight: bold; }
+
+.notes-list {
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.notes-list ul {
+  padding-left: 1.2rem;
+  margin: 0;
+}

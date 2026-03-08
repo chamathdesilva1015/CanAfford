@@ -1,0 +1,426 @@
+import React, { useState } from 'react';
+import { cld } from '../cloudinary/config';
+import { AdvancedImage, placeholder, lazyload } from '@cloudinary/react';
+import { fill } from '@cloudinary/url-gen/actions/resize';
+import { format, quality } from '@cloudinary/url-gen/actions/delivery';
+import { auto } from '@cloudinary/url-gen/qualifiers/format';
+import { auto as autoQuality } from '@cloudinary/url-gen/qualifiers/quality';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import toast from 'react-hot-toast';
+import type { VerifiedListing } from '../services/geminiService';
+import type { UserLifestyle } from '../hooks/useBackboard';
+import { generatePropertyBrief } from '../services/voiceService';
+import type { PropertyBriefInput } from '../services/voiceService';
+import { MOCK_ONTARIO_LEASE } from '../data/mockLease';
+import { ExternalLink, Volume2, Flag, AlertTriangle, FileText, Mail, Lightbulb, Home, Train, ShoppingCart, Info } from 'lucide-react';
+import './SmartInsightPanel.css';
+
+interface SmartInsightPanelProps {
+  listing: VerifiedListing | null;
+  aiData: any; // Using the sub-object from GeminiAnalysis
+  budget: number;
+  lifestyle: UserLifestyle;
+  onClose: () => void;
+  isFlagged: boolean;
+  onFlag: (id: string, reason: string) => void;
+}
+
+export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({ 
+  listing, aiData, budget, lifestyle, onClose, isFlagged, onFlag 
+}) => {
+  const [audioState, setAudioState] = React.useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  
+  // Logistics State
+  const [scanningLease, setScanningLease] = useState(false);
+  const [leaseFlags, setLeaseFlags] = useState<string | null>(null);
+  
+  const [generatingEmail, setGeneratingEmail] = useState(false);
+  const [introEmail, setIntroEmail] = useState<string | null>(null);
+
+  if (!listing) return null;
+
+  const status = aiData?.status || 'Unavailable';
+
+  // --- Determine price type from literal extraction ---
+  const hasSinglePrice = typeof listing.singlePrice === 'number';
+  const hasRange = !!(listing.priceRange?.min && listing.priceRange?.max);
+  const priceMin = listing.priceRange?.min ?? listing.verifiedRent;
+  const priceMax = listing.priceRange?.max ?? listing.verifiedRent;
+
+  // Partial affordability: range straddles budget (low fits, high doesn't)
+  const isPartialMatch = hasRange && priceMin <= budget && priceMax > budget;
+
+  // --- Externalize AI Computed Values ---
+  const transit = aiData?.mathBreakdown?.transit || 0;
+  const groceries = aiData?.mathBreakdown?.groceries || 0;
+  const grocerySource = aiData?.mathBreakdown?.grocerySource || 'Regional API';
+  
+  const trueCost = Number((aiData?.calculatedTrueCost || listing.verifiedRent + transit + groceries).toFixed(2));
+  const costDelta = budget - trueCost;
+  const isOverBudget = !isPartialMatch && costDelta < 0;
+  const costDeltaDisplay = Math.abs(costDelta).toFixed(2);
+
+  // --- Verify button label ---
+  const verifyLabel = listing.sourceName
+    ? `View Original Ad on ${listing.sourceName}`
+    : 'View Listing';
+  const verifyUrl = listing.deepLink || listing.sourceUrl || '#';
+  
+  const handleAudioPlay = async () => {
+    // If already playing, toggle pause/resume
+    if (audioState === 'playing' && audioRef.current) {
+      audioRef.current.pause();
+      setAudioState('paused');
+      return;
+    }
+    if (audioState === 'paused' && audioRef.current) {
+      audioRef.current.play();
+      setAudioState('playing');
+      return;
+    }
+
+    // Generate new audio
+    setAudioState('loading');
+    const toastId = toast.loading('Generating affordability brief...');
+    try {
+      const briefInput: PropertyBriefInput = {
+        listingId: listing.id,
+        address: listing.address,
+        city: listing.city || '',
+        rent: listing.verifiedRent,
+        hasRange,
+        rentMin: priceMin,
+        rentMax: priceMax,
+        transitLow: transit, // Pass exact
+        transitHigh: transit,
+        groceryLow: groceries,
+        groceryHigh: groceries,
+        trueCostLow: trueCost,
+        trueCostHigh: trueCost,
+        budget,
+        status,
+        financialTip: aiData?.survivalTip || 'Here is your financial breakdown limit review.'
+      };
+
+      const blobUrl = await generatePropertyBrief(briefInput);
+      if (!blobUrl) {
+        toast.error('Voice service unavailable — check your ElevenLabs API key', { id: toastId });
+        setAudioState('idle');
+        return;
+      }
+
+      // Stop any previous audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+
+      const audio = new Audio(blobUrl);
+      audioRef.current = audio;
+      audio.onended = () => setAudioState('idle');
+      audio.onerror = () => { setAudioState('idle'); toast.error('Audio playback error'); };
+      await audio.play();
+      setAudioState('playing');
+      toast.success('Playing affordability brief', { id: toastId });
+    } catch (err: any) {
+      toast.error('Audio synthesis failed', { id: toastId });
+      setAudioState('idle');
+    }
+  };
+
+  const handleAudioStop = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    setAudioState('idle');
+  };
+
+  const handleScanLease = async () => {
+    setScanningLease(true);
+    setLeaseFlags(null);
+    const toastId = toast.loading('Scanning lease document...');
+    try {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) throw new Error("Missing Gemini Key");
+      
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        
+        const prompt = `Analyze this Ontario Standard Lease. Identify any illegal deposits (like damage deposits which are illegal in ON), hidden utility costs, or restrictive clauses. Summarize them as highly concise "Red Flags" for the prospective tenant.
+        
+        LEASE TEXT:
+        ${MOCK_ONTARIO_LEASE}
+        `;
+        
+        const result = await model.generateContent(prompt);
+        setLeaseFlags(result.response.text());
+        toast.success('Lease analysis complete', { id: toastId });
+      } catch (err: any) {
+        toast.error(`Scan failed: ${err.message}`, { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error(`Initialization failed: ${err.message}`, { id: toastId });
+    } finally {
+      setScanningLease(false);
+    }
+  };
+
+  const handleGenerateEmail = async () => {
+    setGeneratingEmail(true);
+    setIntroEmail(null);
+    const toastId = toast.loading('Drafting introduction email...');
+    try {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) throw new Error("Missing Gemini Key");
+      
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        
+        const prompt = `Draft a short, empathetic, and professional introduction email to a landlord for the property at "${listing.address}".
+        The user is a highly reliable tenant with these traits:
+        - Work Location: ${lifestyle.workLocation}
+        - Commute style: ${lifestyle.commuteType}
+        - Diet/Focus: ${lifestyle.dietaryFocus}
+        
+        Make it sound natural, polite, and no longer than 3 paragraphs. Do NOT include placeholders like [Your Name] just sign off generically as 'A very interested tenant'.`;
+        
+        const result = await model.generateContent(prompt);
+        setIntroEmail(result.response.text());
+        toast.success('Email drafted successfully', { id: toastId });
+      } catch (err: any) {
+        toast.error(`Drafting failed: ${err.message}`, { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error(`Initialization failed: ${err.message}`, { id: toastId });
+    } finally {
+      setGeneratingEmail(false);
+    }
+  };
+
+
+  const isExternalImage = listing.imageId.startsWith('http');
+  let displayImage: any = null;
+  if (!isExternalImage) {
+    displayImage = cld
+      .image(listing.imageId)
+      .resize(fill().width(600).height(400))
+      .delivery(format(auto()))
+      .delivery(quality(autoQuality()));
+  }
+
+  return (
+    <aside className={`smart-insight-panel pro-theme`}>
+      <header className="sip-header">
+        <h2 className="text-slate-900">Property Insights</h2>
+        <button className="close-panel-btn" onClick={onClose}>&times;</button>
+      </header>
+
+      <div className="sip-content">
+        <div className="sip-hero">
+          {isExternalImage ? (
+            <img src={listing.imageId} alt={listing.address} className="sip-main-img" />
+          ) : (
+            <AdvancedImage
+              cldImg={displayImage}
+              plugins={[placeholder({ mode: 'blur' }), lazyload()]}
+              alt={listing.address}
+              className="sip-main-img"
+            />
+          )}
+          <div className={`sip-badge bg-${status.toLowerCase()}`}>{status}</div>
+        </div>
+
+        <section className="sip-section header-info">
+          <h3 className="text-slate-900">{listing.address}</h3>
+          
+          {/* Price display — conditional on data type returned */}
+          <p className="base-rent text-slate-900">
+            {hasSinglePrice && (
+              <>
+                <span style={{fontSize:'0.8rem', color:'#64748b', textTransform:'uppercase', letterSpacing:'0.05em'}}>Listed Price</span><br/>
+                <strong>${listing.singlePrice}/mo</strong>
+              </>
+            )}
+            {hasRange && (
+              <>
+                <span style={{fontSize:'0.8rem', color:'#64748b', textTransform:'uppercase', letterSpacing:'0.05em'}}>Market Rent Range</span><br/>
+                <strong>${priceMin} – ${priceMax}/mo</strong>
+                <span style={{display:'block', fontSize:'0.75rem', color:'#64748b', marginTop:2}}>Exact range sourced from listing</span>
+              </>
+            )}
+            {!hasSinglePrice && !hasRange && (
+              <>
+                <span style={{fontSize:'0.8rem', color:'#64748b'}}>Estimated Rent</span><br/>
+                <strong>${listing.verifiedRent}/mo</strong>
+              </>
+            )}
+          </p>
+
+          {/* Partial match badge */}
+          {isPartialMatch && (
+            <div style={{background:'#fef3c7', border:'1px solid #f59e0b', borderRadius:8, padding:'6px 10px', marginBottom:8, fontSize:'0.8rem', color:'#92400e'}}>
+              Partial Match — entry-level units may fit your budget
+            </div>
+          )}
+
+          <p className="sip-desc text-slate-600">"{listing.description}"</p>
+          <a href={verifyUrl} target="_blank" rel="noreferrer" className="verify-link-btn">
+            <ExternalLink size={15} />
+            {verifyLabel}
+          </a>
+          {listing.verificationSource && (
+            <p style={{fontSize:'0.7rem', color:'#94a3b8', marginTop:6, wordBreak:'break-all'}}>
+              Source: {listing.verificationSource}
+            </p>
+          )}
+        </section>
+
+        <section className="sip-section true-cost-breakdown">
+          <h4 className="text-slate-900">How We Calculated This</h4>
+          <div className="math-row">
+            <span className="label text-slate-600"><Home size={13} style={{display:'inline', marginRight: 5}} />Starting Rent:</span>
+            <span className="text-slate-900">${listing.verifiedRent}/mo</span>
+          </div>
+          <div className="info-subtext text-slate-500" style={{fontSize:'0.72rem', marginBottom:8}}>
+            <Info size={11} style={{display:'inline', marginRight: 4}} />Starting market rate based on your search
+          </div>
+          <div className="math-row">
+            <span className="label"><Train size={13} style={{display:'inline', marginRight: 5}} />Commute ({lifestyle.commuteType}):</span>
+            <span className="impact-calc">${transit}</span>
+          </div>
+          <div className="info-subtext text-slate-500">
+            <Info size={11} style={{display:'inline', marginRight: 4}} />Estimated Time: {aiData?.calculatedCommuteTime || 30} minutes to {lifestyle.isStudent && lifestyle.university ? lifestyle.university : (lifestyle.workLocation || 'your destination')}.
+          </div>
+          <div className="math-row">
+            <span className="label"><ShoppingCart size={13} style={{display:'inline', marginRight: 5}} />Groceries ({lifestyle.dietaryFocus}):</span>
+            <span className="impact-calc">${groceries}</span>
+          </div>
+          <div className="info-subtext text-slate-500">
+            <Info size={11} style={{display:'inline', marginRight: 4}} />We added ${groceries} based on {grocerySource} for a single adult.
+          </div>
+          <div className="math-row total-calc mt-4">
+            <span className="label">Estimated Total Monthly:</span>
+            <span className={`final-est ${isOverBudget ? 'over-budget' : isPartialMatch ? 'status-stretch' : 'under-budget'}`}>
+              ${trueCost}/mo
+            </span>
+          </div>
+          {isPartialMatch ? (
+            <div className="budget-delta" style={{color:'#d97706', fontWeight:600}}>
+              Entry units may fit your ${budget} budget
+            </div>
+          ) : (
+            <div className={`budget-delta ${isOverBudget ? 'delta-neg' : 'delta-pos'}`}>
+              {isOverBudget
+                ? `+$${costDeltaDisplay} above your $${budget} total budget`
+                : `-$${costDeltaDisplay} under your $${budget} total budget`}
+            </div>
+          )}
+        </section>
+
+        <section className="sip-section gemini-insight">
+          <h4 className="text-slate-900"><Lightbulb size={15} style={{display:'inline', marginRight:6}} />Financial Insight</h4>
+          <div className="insight-card">
+            <p>{aiData?.survivalTip}</p>
+          </div>
+
+          {/* ElevenLabs Affordability Brief */}
+          <div className="sip-audio-controls">
+            <button
+              className={`sip-audio-btn ${audioState !== 'idle' ? 'sip-audio-btn--active' : ''}`}
+              onClick={handleAudioPlay}
+              disabled={audioState === 'loading'}
+            >
+              {audioState === 'loading' && <><span className="btn-spinner" /> Generating Brief...</>}
+              {audioState === 'idle' && <><Volume2 size={14} /> Listen to Affordability Brief</>}
+              {audioState === 'playing' && <><Volume2 size={14} /> Pause Brief</>}
+              {audioState === 'paused' && <><Volume2 size={14} /> Resume Brief</>}
+            </button>
+            {(audioState === 'playing' || audioState === 'paused') && (
+              <button className="sip-audio-stop" onClick={handleAudioStop}>Stop</button>
+            )}
+            {audioState === 'playing' && (
+              <div className="sip-waveform" aria-hidden="true">
+                <span /><span /><span /><span /><span />
+              </div>
+            )}
+          </div>
+          <p className="sip-audio-credit">Powered by ElevenLabs AI</p>
+        </section>
+
+        <section className="sip-section community-vetting">
+          <h4 className="text-slate-900">Community Vetting Matrix</h4>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+            <div className={`trust-ring score-${listing.trustScore > 80 ? 'high' : listing.trustScore > 60 ? 'med' : 'low'}`}>
+              <span className="score-num">{listing.trustScore}</span>
+            </div>
+            <span className="score-label">Trust Score</span>
+          </div>
+          
+          <ul className="sip-notes">
+            {listing.communityNotes.map((note, idx) => (
+              <li key={idx}>{note}</li>
+            ))}
+          </ul>
+          
+
+
+          {!isFlagged && (
+            <button 
+              className="sip-flag-btn" 
+              onClick={() => onFlag(listing.id, "Too good to be true")}
+            >
+              <Flag size={14} /> Flag as Suspicious
+            </button>
+          )}
+          
+          {isFlagged && (
+            <div className="sip-flagged-warning">
+              <AlertTriangle size={14} /> This property is flagged.
+            </div>
+          )}
+        </section>
+
+        <section className="sip-section logistics-toolkit">
+            <h4 className="text-slate-900">Application Logistics Tools</h4>
+            
+            <div className="toolkit-action">
+              <button 
+                className={`sip-tool-btn ${scanningLease ? 'processing' : ''}`} 
+                onClick={handleScanLease}
+                disabled={scanningLease}
+              >
+                {scanningLease ? <><span className="btn-spinner"></span> Scanning...</> : <><FileText size={14} /> Scan Potential Lease</>}
+              </button>
+              {leaseFlags && (
+                <div className="lease-flags-output">
+                  <strong><AlertTriangle size={13} style={{display:'inline', marginRight:4}} />Lease Red Flags:</strong>
+                  <div className="ai-text-box">{leaseFlags}</div>
+                </div>
+              )}
+            </div>
+
+            <div className="toolkit-action">
+              <button 
+                className={`sip-tool-btn email-btn ${generatingEmail ? 'processing' : ''}`} 
+                onClick={handleGenerateEmail}
+                disabled={generatingEmail}
+              >
+                {generatingEmail ? <><span className="btn-spinner"></span> Drafting...</> : <><Mail size={14} /> Generate Intro Email</>}
+              </button>
+              {introEmail && (
+                <div className="intro-email-output">
+                  <strong>Draft Ready:</strong>
+                  <div className="ai-text-box selectable">{introEmail}</div>
+                </div>
+              )}
+            </div>
+        </section>
+      </div>
+    </aside>
+  );
+};

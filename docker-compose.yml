@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  canafford:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:3000" # Map host port 80 to container port 3000
+    environment:
+      - NODE_ENV=production
+      - VITE_GEMINI_API_KEY=${VITE_GEMINI_API_KEY}
+    restart: unless-stopped

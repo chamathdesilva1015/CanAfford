@@ -1,0 +1,300 @@
+/* ────────────────────────────────────────────────────
+   DASHBOARD.CSS
+   Scoped to the authenticated dashboard shell.
+   Uses Fraunces (headings) + Inter (body/data).
+──────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@700;900&family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Root ── */
+.db-root {
+  min-height: 100vh;
+  background: #050505;
+  color: #e2e8f0;
+  font-family: 'Inter', system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.db-loading,
+.db-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: #64748b;
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── TOP NAV ── */
+.db-topnav {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 60px;
+  padding: 0 2rem;
+  background: rgba(5, 5, 5, 0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.db-logo {
+  font-family: 'Fraunces', serif;
+  font-weight: 900;
+  font-size: 1.15rem;
+  letter-spacing: -0.04em;
+  background: linear-gradient(130deg, #60efff, #00ff87);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-right: 2rem;
+  white-space: nowrap;
+}
+
+/* ── TAB BAR ── */
+.db-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  height: 100%;
+}
+
+.db-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 100%;
+  padding: 0 1.1rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.18s, border-color 0.18s;
+  white-space: nowrap;
+}
+
+.db-tab:hover { color: #94a3b8; }
+
+.db-tab--active {
+  color: #00ff87;
+  border-bottom-color: #00ff87;
+}
+
+/* ── NAV RIGHT ── */
+.db-topnav-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.db-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: #64748b;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+
+.db-logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239,68,68,0.1);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+  position: relative;
+  z-index: 999;
+  pointer-events: auto;
+}
+
+.db-logout-btn:hover {
+  background: rgba(239,68,68,0.18);
+  border-color: rgba(239,68,68,0.35);
+}
+
+/* ── MEMORY BAR ── */
+.db-memory-bar {
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding: 12px 2rem;
+}
+
+.db-memory-display {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.db-memory-stats {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.db-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 1.5rem 4px 0;
+}
+
+.db-stat-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #334155;
+}
+
+.db-stat-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.db-stat-div {
+  width: 1px;
+  height: 28px;
+  background: rgba(255,255,255,0.06);
+  margin: 0 1.5rem 0 0;
+}
+
+.db-btn-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(96,239,255,0.1);
+  color: #60efff;
+  border: 1px solid rgba(96,239,255,0.2);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s;
+  margin-left: 1.5rem;
+}
+
+.db-btn-edit:hover { background: rgba(96,239,255,0.18); }
+
+/* ── EDIT FORM ── */
+.db-edit-form { padding: 4px 0; }
+
+.db-form-grid {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.db-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.db-form-group label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #475569;
+}
+
+.db-input {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 0.875rem;
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border-color 0.18s;
+}
+
+.db-input option {
+  color: #000;
+  background: #fff;
+}
+
+.db-input:focus { border-color: rgba(96,239,255,0.5); }
+
+.db-form-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.db-btn-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #0061ff, #60efff);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.18s;
+}
+
+.db-btn-save:hover { opacity: 0.88; }
+.db-btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.db-btn-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.04);
+  color: #64748b;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.18s;
+}
+
+.db-btn-cancel:hover { color: #94a3b8; }
+
+/* ── TAB CONTENT ── */
+.db-tab-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .db-topnav { padding: 0 1rem; }
+  .db-tab { font-size: 0.78rem; padding: 0 0.75rem; }
+  .db-memory-bar { padding: 10px 1rem; }
+  .db-memory-stats { gap: 0; }
+  .db-stat-div { display: none; }
+}

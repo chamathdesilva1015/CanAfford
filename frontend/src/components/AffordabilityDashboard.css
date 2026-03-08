@@ -1,0 +1,367 @@
+/* ────────────────────────────────────────────────────
+   AFFORDABILITY DASHBOARD — tab content styles
+   All scoped to .adb-* to avoid collision
+──────────────────────────────────────────────────── */
+
+/* Root */
+.adb-root {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Tab header (title + subtitle used in all tabs) ── */
+.adb-tab-header {
+  padding: 1.75rem 2rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.adb-tab-header h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: #f1f5f9;
+  margin: 0 0 0.3rem;
+}
+
+.adb-tab-header p {
+  font-size: 0.875rem;
+  color: #475569;
+  margin: 0;
+}
+
+/* ── EXPLORE TAB ── */
+.adb-explore-layout {
+  display: flex;
+  flex: 1;
+  height: calc(100vh - 112px);
+  overflow: hidden;
+}
+
+.adb-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.015);
+  padding: 1rem;
+}
+
+.adb-explore-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.adb-map-wrap {
+  height: 360px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.adb-card-grid {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+/* ── LISTINGS TAB ── */
+.adb-listings-tab {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 112px);
+  overflow-y: auto;
+}
+
+.adb-listings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+  padding: 1.25rem 2rem 2rem;
+}
+
+/* ── CARDS (shared between explore + listings) ── */
+.adb-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.adb-card:hover {
+  border-color: rgba(96,239,255,0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.3);
+}
+
+.adb-card--selected {
+  border-color: #00ff87 !important;
+  box-shadow: 0 0 0 1px #00ff87, 0 8px 28px rgba(0,255,135,0.15);
+}
+
+.adb-card--large .adb-card-img img,
+.adb-card--large .adb-card-img > div {
+  height: 200px;
+}
+
+.adb-card-img {
+  position: relative;
+  overflow: hidden;
+}
+
+.adb-card-img img,
+.adb-card-img > div {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+}
+
+.adb-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.adb-badge--affordable {
+  background: rgba(0,255,135,0.9);
+  color: #000;
+}
+
+.adb-badge--stretch {
+  background: rgba(245,158,11,0.9);
+  color: #fff;
+}
+
+.adb-badge--unavailable {
+  background: rgba(239,68,68,0.85);
+  color: #fff;
+}
+
+.adb-card-body {
+  padding: 0.85rem 1rem;
+}
+
+.adb-card-price {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  margin: 0 0 0.25rem;
+  letter-spacing: -0.03em;
+}
+
+.adb-card-price span {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.adb-card-addr {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0 0 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adb-card-truecost {
+  font-size: 0.78rem;
+  color: #00ff87;
+  margin: 0 0 0.5rem;
+}
+
+.adb-compare-chk {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: #475569;
+  cursor: pointer;
+  user-select: none;
+}
+
+.adb-compare-chk input { accent-color: #60efff; }
+
+/* ── COMPARE LAUNCH ── */
+.adb-compare-launch {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: linear-gradient(135deg, #0061ff, #60efff);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 11px 20px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(96,239,255,0.4);
+  z-index: 100;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+
+.adb-compare-launch:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(96,239,255,0.5);
+}
+
+/* ── VAULT TAB ── */
+.adb-vault-tab {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 112px);
+  overflow-y: auto;
+}
+
+.adb-vault-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 2rem;
+  padding: 1.5rem 2rem;
+}
+
+.adb-vault-health {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+.adb-vault-health h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin: 0 0 1rem;
+}
+
+.adb-health-track {
+  background: rgba(255,255,255,0.06);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.adb-health-fill {
+  background: linear-gradient(90deg, #60efff, #00ff87);
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+.adb-vault-health p {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0 0 1.25rem;
+}
+
+.adb-upload-btn {
+  background: rgba(96,239,255,0.1);
+  color: #60efff;
+  border: 1px solid rgba(96,239,255,0.2);
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+  transition: background 0.18s;
+}
+
+.adb-upload-btn:hover { background: rgba(96,239,255,0.18); }
+
+/* ── ACTIVITY TAB ── */
+.adb-activity-tab {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 112px);
+  overflow-y: auto;
+}
+
+.adb-activity-list {
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.adb-activity-empty {
+  color: #334155;
+  font-size: 0.9rem;
+  padding: 2rem 0;
+}
+
+.adb-activity-item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+
+.adb-activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00ff87;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.adb-activity-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #00ff87;
+  margin: 0 0 3px;
+}
+
+.adb-activity-detail {
+  font-size: 0.9rem;
+  color: #e2e8f0;
+  margin: 0 0 2px;
+  font-weight: 500;
+}
+
+.adb-activity-cost {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0 0 4px;
+}
+
+.adb-activity-source {
+  font-size: 0.75rem;
+  color: #60efff;
+  text-decoration: none;
+}
+
+.adb-activity-source:hover { text-decoration: underline; }
+
+/* ── STATUS CLASSES ── */
+.status-affordable { border-left: 2px solid rgba(0,255,135,0.3); }
+.status-stretch     { border-left: 2px solid rgba(245,158,11,0.3); }
+.status-unavailable { border-left: 2px solid rgba(239,68,68,0.2); }

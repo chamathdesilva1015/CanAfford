@@ -1,0 +1,70 @@
+.error-boundary-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #f8fafc;
+  padding: 2rem;
+  font-family: var(--font-primary), sans-serif;
+}
+
+.error-boundary-card {
+  background: white;
+  padding: 3rem;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  max-width: 500px;
+  text-align: center;
+  border-top: 4px solid var(--color-warning);
+}
+
+.error-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.error-boundary-card h1 {
+  color: var(--color-text);
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.error-primary {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #334155;
+  margin-bottom: 0.5rem;
+}
+
+.error-secondary {
+  color: #64748b;
+  margin-bottom: 2rem;
+}
+
+.error-reset-btn {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.error-reset-btn:hover {
+  opacity: 0.9;
+}
+
+.error-trace {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: #f1f5f9;
+  border-radius: 6px;
+  color: #dc2626;
+  font-family: monospace;
+  font-size: 0.85rem;
+  text-align: left;
+  overflow-x: auto;
+}

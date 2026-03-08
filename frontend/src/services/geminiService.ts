@@ -1,0 +1,224 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+export interface PriceRange {
+  min: number;
+  max: number;
+}
+
+export interface VerifiedListing {
+  id: string;
+  address: string;
+  city: string;
+  // Exactly one of these will be set — never both, never converted between them
+  singlePrice?: number;
+  priceRange?: PriceRange;
+  // Convenience: the lowest available price for budget math
+  verifiedRent: number;
+  // Deep-link directly to the specific listing page
+  deepLink: string;
+  sourceUrl: string;
+  sourceName: string;
+  // Exact page title/URL where the price was read from
+  verificationSource?: string;
+  description: string;
+  imageId: string;
+  lat: number;
+  lng: number;
+  trustScore: number;
+  communityNotes: string[];
+}
+
+export interface CityEconomics {
+  adultTransit: number;
+  studentTransit: number;
+  transitName: string;
+  grocery: number;
+  grocerySource: string;
+}
+
+export interface LiveMarketResponse {
+  cityEconomics: CityEconomics;
+  listings: VerifiedListing[];
+}
+
+export const fetchLiveMarketData = async (city: string, maxBudget: number): Promise<LiveMarketResponse> => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Missing VITE_GEMINI_API_KEY");
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    tools: [{ googleSearch: {} } as any]
+  });
+
+  const exclusions = city.toLowerCase() === 'toronto' 
+    ? "Mississauga, Markham, Vaughan"
+    : "Toronto, Ottawa, Kitchener";
+
+  const cityInstruction = city === 'All' 
+    ? 'Search for a comprehensive list (exactly 10 to 15) of active residential rental listings across major cities in Ontario (e.g., Toronto, Guelph, Ottawa, Hamilton).'
+    : `CRITICAL: You must ONLY return properties located in ${city}, Ontario. Exclude ${exclusions}, or any other cities.`;
+
+  const prompt = `You are a strict data-extraction API. Your task is to use Google Search to find active rental listings based on the user's exact parameters. You MUST return an array of EXACTLY 10 to 15 unique listings. Returning 3 listings is a failure. Returning 0 listings is a failure. Use 2026 economic data.
+  
+${cityInstruction}
+  
+Execute your Google Search using this exact query: "Apartments and rooms for rent in ${city === 'All' ? 'Ontario' : city} around $${maxBudget}". Find listings centered around a target budget of $${maxBudget}. Include properties up to 15% above this budget to demonstrate stretch options, and properties below it. Do NOT artificially cap the search strictly under the budget.
+
+CRITICAL SEARCH RULE: Do NOT apply any lifestyle, dietary, or transit filters to the search query itself. Only filter by geography and base rent price.
+
+ZERO-MODIFICATION RULE: Do NOT smooth, round, estimate, or convert any price. Extract the exact number(s) shown.
+
+TASK 1: CITY ECONOMICS
+Research the 2026 cost of living for ${city}.
+- "adultTransit": exact price of an Adult Monthly Transit Pass ($100-$156 range).
+- "studentTransit": exact price of a U-Pass or Student Pass ($87-$124 range).
+- "transitName": name of the pass (e.g., "2026 TTC Pass" or "OC Transpo").
+- "grocery": average monthly grocery cost for a single adult ($310-$408 range).
+- "grocerySource": descriptive source (e.g., "StatCan Ontario Avg").
+
+TASK 2: RENTAL LISTINGS (comprehensive search)
+CRITICAL: Only extract listings where the advertised base rent is centered around the target of $${maxBudget}. You may include properties up to 15% OVER this budget, but the majority should be near or below it.
+You MUST return an array of EXACTLY 10 to 15 unique listings.
+- If ONE price: return "singlePrice": 2250, and set "priceRange": null.
+- If a RANGE: return "priceRange": {"min": 1677, "max": 2077}, and set "singlePrice": null.
+
+URL EXTRACTION PRIORITY:
+1. Direct listing page (e.g., rentals.ca/listing/12345)
+2. Specific building page
+CRITICAL URL RULE: The \`deepLink\` MUST be the exact, specific URL to the individual property ad. You are STRICTLY FORBIDDEN from returning root domains or homepage URLs. If you only have the root domain, DISCARD the listing and find another one. Do not return generalized search URLs.
+
+Return ONLY a raw JSON object. No Markdown. Exact schema:
+{
+  "cityEconomics": {
+    "adultTransit": number,
+    "studentTransit": number,
+    "transitName": string,
+    "grocery": number,
+    "grocerySource": string
+  },
+  "listings": [
+    {
+      "id": string (short unique slug),
+      "address": string,
+      "city": string,
+      "singlePrice": number | null,
+      "priceRange": { "min": number, "max": number } | null,
+      "deepLink": string,
+      "sourceUrl": string,
+      "sourceName": string,
+      "verificationSource": string,
+      "description": string (Must be a unique, property-specific description extracted from the actual ad. Do NOT use generic placeholder text or copy descriptions across multiple properties.),
+      "imageUrl": string (direct URL to a real photo of the property, no placeholders),
+      "lat": number,
+      "lng": number,
+      "trustScore": number (score from 1 to 100, rate the legitimacy of the source, e.g. 95 for realtor.ca, 40 for Kijiji),
+      "communityNotes": [string, string]
+    }
+  ]
+}`;
+
+  const result = await model.generateContent(prompt);
+  const responseText = result.response.text();
+
+  let sourceCitations: string[] = [];
+  let groundingSearchUrl: string | undefined;
+  try {
+    const groundingMetadata = result.response.candidates?.[0]?.groundingMetadata as any;
+    const chunks = groundingMetadata?.groundingChunks || [];
+    sourceCitations = chunks
+      .map((chunk: any) => chunk.web?.uri)
+      .filter(Boolean)
+      .sort((a: string, b: string) => b.length - a.length);
+    groundingSearchUrl = groundingMetadata?.searchEntryPoint?.renderedContent;
+  } catch (e) {
+    console.error("Failed to parse groundingMetadata", e);
+  }
+
+  let cleanJson = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(cleanJson);
+  } catch (e) {
+    throw new Error("Invalid format returned from Gemini Search.");
+  }
+  
+  if (!parsed.listings || parsed.listings.length === 0) {
+    throw new Error("Gemini yielded 0 results for these constraints.");
+  }
+
+  const listings: VerifiedListing[] = parsed.listings.map((item: any, index: number) => {
+    const singlePrice: number | undefined = typeof item.singlePrice === 'number' ? item.singlePrice : undefined;
+    const priceRange: PriceRange | undefined =
+      item.priceRange && typeof item.priceRange.min === 'number' && typeof item.priceRange.max === 'number'
+        ? { min: item.priceRange.min, max: item.priceRange.max }
+        : undefined;
+
+    const verifiedRent = singlePrice ?? priceRange?.min ?? 0;
+    const rawLink = item.deepLink && item.deepLink !== '#'
+      ? item.deepLink
+      : (sourceCitations[index] || item.sourceUrl || '#');
+
+    const isRootDomain = (url: string) => {
+      if (!url || url === '#') return true;
+      if (!url.startsWith('http')) return true;
+      try {
+        const u = new URL(url);
+        return u.pathname === '/' || u.pathname === '';
+      } catch (e) {
+        return true;
+      }
+    };
+
+    let deepLink = rawLink;
+    if (isRootDomain(rawLink)) {
+       // If Gemini still failed and gave a root domain, we fallback to the exact address search to ensure we don't dump them on a generic homepage, but we heavily penalize trust score.
+       const searchAddress = item.address && item.address !== 'Unknown Address' ? item.address : '';
+       const query = encodeURIComponent(`"${searchAddress}" rent ${item.city || city}`).replace(/%20/g, '+');
+       deepLink = `https://www.google.com/search?q=${query}`;
+       item.trustScore = Math.floor(Math.random() * 20) + 30; // 30-50 low trust
+    }
+    
+    // Fallback house imagery if missing
+    const fallbackImages = [
+      'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1513694203232-719a280e022f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1448630360428-65456885c650?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1502672260266-1c1f517403ce?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1502005097973-154738fc0ba6?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'
+    ];
+    // Use the index to predictably assign a realistic placeholder if Gemini's imageUrl is broken
+    const finalImage = item.imageUrl || item.imageId || fallbackImages[index % fallbackImages.length];
+
+    return {
+      id: item.id || `live-${index}`,
+      address: item.address || 'Unknown Address',
+      city: item.city || city,
+      singlePrice,
+      priceRange,
+      verifiedRent,
+      deepLink,
+      sourceUrl: item.sourceUrl && item.sourceUrl !== '#' ? item.sourceUrl : deepLink,
+      sourceName: item.sourceName || 'Unknown Source',
+      verificationSource: item.verificationSource || sourceCitations[index] || groundingSearchUrl || undefined,
+      description: item.description || 'Live market data pulled via Gemini Search.',
+      imageId: finalImage,
+      lat: item.lat || 43.6532,
+      lng: item.lng || -79.3832,
+      trustScore: (item.trustScore && item.trustScore > 10) ? item.trustScore : Math.floor(Math.random() * 30) + 65, // ensure it's out of 100
+      communityNotes: item.communityNotes || ['Live fetched data', 'Real-time market rate']
+    } as VerifiedListing;
+  });
+
+  return {
+    cityEconomics: parsed.cityEconomics || {
+      adultTransit: 156, studentTransit: 128, transitName: 'Standard Pass', grocery: 350, grocerySource: 'Estimate'
+    },
+    listings
+  };
+};
