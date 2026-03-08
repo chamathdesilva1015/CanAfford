@@ -288,6 +288,7 @@ export const Dashboard = () => {
           cities={preferences.cities}
           lifestyle={preferences.lifestyle}
           activeTab={activeTab}
+          onTabSwitch={setActiveTab}
         />
       </main>
 

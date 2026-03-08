@@ -49,7 +49,7 @@ export const AdvocateTab: React.FC = () => {
           </label>
           <textarea
             className="advocate-textarea"
-            placeholder="Paste the full text of any Ontario lease agreement here. Our AI paralegal will scan every clause against the Ontario RTA and flag anything illegal..."
+            placeholder="Paste the full text of any Ontario lease agreement here. Our AI advocate will review every clause for fairness, unusual terms, and RTA compliance..."
             value={leaseText}
             onChange={e => setLeaseText(e.target.value)}
             rows={18}
@@ -60,9 +60,9 @@ export const AdvocateTab: React.FC = () => {
             disabled={isScanning}
           >
             {isScanning ? (
-              <><Loader2 className="animate-spin" size={16} /> Analyzing Against Ontario RTA...</>
+              <><Loader2 className="animate-spin" size={16} /> Reviewing Lease Agreement...</>
             ) : (
-              <><Shield size={16} /> Scan Lease for Illegal Clauses</>
+              <><Shield size={16} /> Review Full Lease Agreement</>
             )}
           </button>
         </div>
@@ -73,15 +73,15 @@ export const AdvocateTab: React.FC = () => {
             <div className="advocate-empty-state">
               <Shield size={48} strokeWidth={1} />
               <h3>Analysis Results</h3>
-              <p>Paste a lease agreement and click "Scan" to receive your AI legal analysis.</p>
+              <p>Paste a lease agreement and click "Review" to receive your AI Advocate report.</p>
             </div>
           )}
 
           {isScanning && (
             <div className="advocate-empty-state">
               <Loader2 className="animate-spin" size={48} strokeWidth={1} />
-              <h3>Scanning Lease...</h3>
-              <p>Our AI Paralegal is cross-referencing every clause against the Ontario Residential Tenancies Act.</p>
+              <h3>Reviewing Lease...</h3>
+              <p>Our AI Advocate is ensuring this agreement is fair, standard, and legally compliant with the Ontario RTA.</p>
             </div>
           )}
 
@@ -91,19 +91,19 @@ export const AdvocateTab: React.FC = () => {
               <div className={`advocate-risk-badge risk-${analysis.overallRisk.toLowerCase()}`}>
                 <span className="risk-level">{analysis.overallRisk} Risk</span>
                 <span className="risk-counts">
-                  {analysis.redFlags.length} Red Flag{analysis.redFlags.length !== 1 ? 's' : ''} · {analysis.greenFlags.length} Green Flag{analysis.greenFlags.length !== 1 ? 's' : ''}
+                  {analysis.illegalClauses.length} Illegal · {analysis.unusualClauses.length} Unusual · {analysis.standardClauses.length} Standard
                 </span>
               </div>
 
               <p className="advocate-summary">{analysis.summary}</p>
 
-              {/* Red Flags */}
-              {analysis.redFlags.length > 0 && (
+              {/* Illegal Flags */}
+              {analysis.illegalClauses.length > 0 && (
                 <div className="advocate-flags-section">
                   <h4 className="flags-header flags-header--red">
-                    <AlertTriangle size={15} /> Red Flags — Illegal / Void Clauses
+                    <AlertTriangle size={15} /> Illegal / Void Clauses (Violates RTA)
                   </h4>
-                  {analysis.redFlags.map((flag, idx) => (
+                  {analysis.illegalClauses.map((flag, idx) => (
                     <div key={idx} className="flag-card flag-card--red">
                       <p className="flag-clause">"{flag.clause}"</p>
                       <p className="flag-reasoning">{flag.reasoning}</p>
@@ -117,13 +117,28 @@ export const AdvocateTab: React.FC = () => {
                 </div>
               )}
 
-              {/* Green Flags */}
-              {analysis.greenFlags.length > 0 && (
+              {/* Unusual Flags */}
+              {analysis.unusualClauses.length > 0 && (
+                <div className="advocate-flags-section">
+                  <h4 className="flags-header flags-header--amber">
+                    <AlertTriangle size={15} className="text-amber-400" /> Heads Up: Unusual Terms
+                  </h4>
+                  {analysis.unusualClauses.map((flag, idx) => (
+                    <div key={idx} className="flag-card flag-card--amber">
+                      <p className="flag-clause">"{flag.clause}"</p>
+                      <p className="flag-reasoning">{flag.reasoning}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Standard Flags */}
+              {analysis.standardClauses.length > 0 && (
                 <div className="advocate-flags-section">
                   <h4 className="flags-header flags-header--green">
-                    <CheckCircle size={15} /> Green Flags — Compliant Clauses
+                    <CheckCircle size={15} /> Standard & Fair Clauses
                   </h4>
-                  {analysis.greenFlags.map((flag, idx) => (
+                  {analysis.standardClauses.map((flag, idx) => (
                     <div key={idx} className="flag-card flag-card--green">
                       <p className="flag-clause">"{flag.clause}"</p>
                       <p className="flag-reasoning">{flag.reasoning}</p>
@@ -137,7 +152,7 @@ export const AdvocateTab: React.FC = () => {
       </div>
 
       <p style={{fontSize: '0.7rem', fontStyle: 'italic', color: '#64748b', padding: '16px 32px 24px', lineHeight: 1.5}}>
-        Disclaimer: CanAfford AI provides preliminary RTA screening and educational information. It does not constitute formal legal advice. Always verify with the Ontario Landlord and Tenant Board (LTB) or a licensed paralegal before signing a lease.
+        Disclaimer: CanAfford AI Advocate provides preliminary RTA screening and educational information. It does not constitute formal legal advice. Always verify with the Ontario Landlord and Tenant Board (LTB) or a licensed paralegal before signing a lease.
       </p>
     </div>
   );

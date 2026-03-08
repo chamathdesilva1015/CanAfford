@@ -99,11 +99,6 @@ Return up to 15 valid, unique real-world listings. If you can only find 3, retur
 - If ONE price: return "singlePrice": 2250, and set "priceRange": null.
 - If a RANGE: return "priceRange": {"min": 1677, "max": 2077}, and set "singlePrice": null.
 
-URL EXTRACTION PRIORITY:
-1. Direct listing page (e.g., rentals.ca/listing/12345)
-2. Specific building page
-CRITICAL URL RULE: The \`deepLink\` MUST be the exact, specific URL to the individual property ad. You are STRICTLY FORBIDDEN from returning root domains or homepage URLs. If you only have the root domain, DISCARD the listing and find another one. Do not return generalized search URLs.
-
 Return ONLY a raw JSON object. No Markdown. Exact schema:
 {
   "cityEconomics": {
@@ -120,9 +115,6 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
       "city": string,
       "singlePrice": number | null,
       "priceRange": { "min": number, "max": number } | null,
-      "deepLink": string,
-      "sourceUrl": string,
-      "sourceName": string,
       "verificationSource": string,
       "description": string (Must be a unique, synthesized description in your own words. Extremely brief, maximum one short sentence. e.g. 'A 1-bedroom apartment located near downtown transit.'),
       "imageUrl": string (direct URL to a real photo of the property, no placeholders),
@@ -186,30 +178,7 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
         : undefined;
 
     const verifiedRent = singlePrice ?? priceRange?.min ?? 0;
-    const rawLink = item.deepLink && item.deepLink !== '#'
-      ? item.deepLink
-      : (sourceCitations[index] || item.sourceUrl || '#');
 
-    const isRootDomain = (url: string) => {
-      if (!url || url === '#') return true;
-      if (!url.startsWith('http')) return true;
-      try {
-        const u = new URL(url);
-        return u.pathname === '/' || u.pathname === '';
-      } catch (e) {
-        return true;
-      }
-    };
-
-    let deepLink = rawLink;
-    if (isRootDomain(rawLink)) {
-       // If Gemini still failed and gave a root domain, we fallback to the exact address search to ensure we don't dump them on a generic homepage, but we heavily penalize trust score.
-       const searchAddress = item.address && item.address !== 'Unknown Address' ? item.address : '';
-       const query = encodeURIComponent(`"${searchAddress}" rent ${item.city || city}`).replace(/%20/g, '+');
-       deepLink = `https://www.google.com/search?q=${query}`;
-       item.trustScore = Math.floor(Math.random() * 20) + 30; // 30-50 low trust
-    }
-    
     // Fallback house imagery if missing
     const fallbackImages = [
       'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
@@ -248,9 +217,7 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
       singlePrice,
       priceRange,
       verifiedRent,
-      deepLink,
-      sourceUrl: item.sourceUrl && item.sourceUrl !== '#' ? item.sourceUrl : deepLink,
-      sourceName: item.sourceName || 'Unknown Source',
+      sourceName: item.sourceName || 'Property Source',
       verificationSource: item.verificationSource || sourceCitations[index] || groundingSearchUrl || undefined,
       description: item.description || 'Live market data pulled via Gemini Search.',
       imageId: finalImage,
@@ -324,16 +291,16 @@ RULES:
   }
 };
 
-export interface LeaseFlag {
+export interface LeaseClause {
   clause: string;
-  type: 'red' | 'green';
   reasoning: string;
   referenceUrl?: string;
 }
 
 export interface LeaseAnalysis {
-  redFlags: LeaseFlag[];
-  greenFlags: LeaseFlag[];
+  standardClauses: LeaseClause[];
+  unusualClauses: LeaseClause[];
+  illegalClauses: LeaseClause[];
   overallRisk: 'Low' | 'Medium' | 'High';
   summary: string;
 }
@@ -343,34 +310,34 @@ export const analyzeLeaseAgreement = async (leaseText: string): Promise<LeaseAna
   if (!apiKey) throw new Error("Missing VITE_GEMINI_API_KEY");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' }); // Updated to production model
 
-  const prompt = `You are a strict Ontario Tenant Rights AI Paralegal. You must evaluate the lease text EXCLUSIVELY against the Ontario Residential Tenancies Act (RTA), 2006. Do not reference laws from any other province or country.
+  const prompt = `You are a helpful and strict Ontario Tenant Rights AI Advocate. Analyze the provided lease agreement and categorize its terms into three categories based on the Ontario Residential Tenancies Act (RTA), 2006.
 
-For every Red Flag you find, you MUST:
-1. Cite the specific RTA section number (e.g., "RTA Section 134(1)") or Landlord and Tenant Board (LTB) guideline.
-2. Provide a "referenceUrl" linking to the official Ontario e-Laws page (e.g., "https://www.ontario.ca/laws/statute/06r17") or the specific LTB tribunal guidance page.
+CATEGORIES:
+1. standardClauses: Normal, fair, and good clauses protecting both parties.
+2. unusualClauses: Clauses that are legal but uncommon, potentially burdensome, or "bad" for the tenant (e.g., tenant responsible for snow removal in a multi-unit, or specific restrictive utility caps).
+3. illegalClauses: Clauses that are strictly illegal and void under the Ontario RTA. You MUST include a specific RTA citation (e.g., "Void under RTA Section 14") and a referenceUrl to the official Ontario e-Laws page.
 
-For Green Flags, cite the relevant RTA section confirming the clause is legal.
-
-Common illegal clauses to watch for:
-- "No Pets" provisions (void under RTA Section 14)
-- Requirements for post-dated cheques (illegal under RTA Section 108)
-- Damage/security deposits beyond last month's rent deposit (RTA Sections 105/106)
-- Forced professional cleaning clauses (not enforceable under RTA)
-- Guest restrictions (void under RTA Section 14)
-- Key deposit exceeding replacement cost (RTA Section 17)
-
-Return a JSON object with:
-- "redFlags": array of objects with "clause" (the problematic lease text), "type": "red", "reasoning" (the specific RTA section and explanation), and "referenceUrl" (link to official Ontario.ca e-laws or LTB page)
-- "greenFlags": array of objects with "clause" (the compliant lease text), "type": "green", and "reasoning" (the RTA section confirming compliance)
-- "overallRisk": "Low", "Medium", or "High" based on severity and count of red flags
-- "summary": A 2-sentence summary of the lease's overall RTA compliance
+COMMON ILLEGAL CLAUSES (REFRESHER):
+- "No Pets" (RTA Section 14)
+- Damage deposits or security deposits beyond last month's rent (RTA Section 105)
+- Post-dated cheque requirements (RTA Section 108)
+- Illegal "Key Deposits" exceeding replacement cost (RTA Section 17)
+- "No Guests" or "Guest Fees" (LTB Policy)
 
 LEASE TEXT:
 ${leaseText}
 
-Return ONLY a raw JSON object. No Markdown.`;
+Return ONLY a raw JSON object with this schema:
+{
+  "standardClauses": [{"clause": string, "reasoning": string}],
+  "unusualClauses": [{"clause": string, "reasoning": string}],
+  "illegalClauses": [{"clause": string, "reasoning": string, "referenceUrl": string}],
+  "overallRisk": "Low" | "Medium" | "High",
+  "summary": "A 2-3 sentence overview of the lease quality."
+}
+No Markdown wrappers.`;
 
   try {
     const result = await model.generateContent(prompt);
@@ -378,7 +345,7 @@ Return ONLY a raw JSON object. No Markdown.`;
     return JSON.parse(cleanJson) as LeaseAnalysis;
   } catch (error: any) {
     if (error.message && error.message.includes('429')) {
-      throw new Error("Gemini API Free Tier Limit Reached. Please pause for 30 seconds before searching again.");
+      throw new Error("Gemini API Limit Reached. Please wait a moment.");
     }
     throw error;
   }

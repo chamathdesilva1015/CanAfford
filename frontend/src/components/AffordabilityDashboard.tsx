@@ -7,12 +7,11 @@ import { useBackboard } from '../hooks/useBackboard';
 import { SearchFilters } from './SearchFilters';
 import type { FilterState } from './SearchFilters';
 import { MapView } from './MapView';
-import { ComparisonView } from './ComparisonView';
 import { SmartInsightPanel } from './SmartInsightPanel';
 import { Vault } from './Vault';
 import { AdvocateTab } from './AdvocateTab';
 import { LoadingScreen } from './LoadingScreen';
-import { Scale, Home, Heart, Sparkles, Brain } from 'lucide-react';
+import { Home, Heart, Sparkles, Brain, Search } from 'lucide-react';
 import type { UserLifestyle } from '../hooks/useBackboard';
 import type { RevealedPreferencesResult } from '../services/geminiService';
 import { analyzeRevealedPreferences } from '../services/geminiService';
@@ -39,7 +38,7 @@ export interface GeminiAnalysis {
   }>;
 }
 
-export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 'explore' }: { budget: number, cities: string[], lifestyle: UserLifestyle, activeTab?: string }) => {
+export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 'explore', onTabSwitch }: { budget: number, cities: string[], lifestyle: UserLifestyle, activeTab?: string, onTabSwitch: (tab: any) => void }) => {
   const [analysis, setAnalysis] = useState<GeminiAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   
@@ -54,21 +53,11 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
   });
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
 
-  // Comparison Studio State
-  const [compareIds, setCompareIds] = useState<string[]>([]);
-  const [showComparison, setShowComparison] = useState(false);
+  // Behavior State
   const [revealedPrefs, setRevealedPrefs] = useState<RevealedPreferencesResult | null>(null);
   const [analyzingPrefs, setAnalyzingPrefs] = useState(false);
   
   const targetCity = filters.city !== 'All' ? filters.city : (cities[0] || 'Toronto');
-
-  const handleToggleCompare = (id: string) => {
-    setCompareIds(prev => {
-      if (prev.includes(id)) return prev.filter(x => x !== id);
-      if (prev.length >= 3) { toast.error('Maximum 3 properties for comparison'); return prev; }
-      return [...prev, id];
-    });
-  };
 
   const getGeminiListingData = (id: string) => {
     if (!analysis) return null;
@@ -271,15 +260,23 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
                               )}
                               <p className="adb-card-addr text-slate-300 truncate">{listing.address}</p>
                               <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px'}}>
-                                <label className="adb-compare-chk" onClick={e => e.stopPropagation()}>
-                                  <input type="checkbox" checked={compareIds.includes(listing.id)} onChange={() => handleToggleCompare(listing.id)} /> Compare
-                                </label>
                                 <button 
                                   className={`adb-save-btn ${savedListings.find(s => s.id === listing.id) ? 'saved' : ''}`}
                                   onClick={(e) => { e.stopPropagation(); saveListing(listing); }}
                                   title={savedListings.find(s => s.id === listing.id) ? 'Unsave' : 'Save'}
                                 >
                                   <Heart size={13} fill={savedListings.find(s => s.id === listing.id) ? '#ef4444' : 'none'} color={savedListings.find(s => s.id === listing.id) ? '#ef4444' : '#64748b'} />
+                                </button>
+                                <button
+                                  className="adb-save-btn"
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    window.open(`https://www.google.com/search?q=${encodeURIComponent(listing.address + ' ' + listing.city + ' rent')}`, '_blank');
+                                  }}
+                                  title="Search on Google"
+                                  style={{ background: 'rgba(255,255,255,0.05)' }}
+                                >
+                                  <Search size={13} color="#94a3b8" />
                                 </button>
                               </div>
                             </div>
@@ -290,11 +287,6 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
               </div>
             </main>
           </div>
-          {compareIds.length >= 2 && (
-            <button className="adb-compare-launch" onClick={() => setShowComparison(true)}>
-              <Scale size={14} /> Compare {compareIds.length} listings
-            </button>
-          )}
         </>
       )}
 
@@ -341,20 +333,12 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
                             </div>
                           )}
                           <p className="adb-card-addr text-slate-300 truncate">{listing.address}, {listing.city}</p>
-                          <label className="adb-compare-chk" onClick={e => e.stopPropagation()}>
-                            <input type="checkbox" checked={compareIds.includes(listing.id)} onChange={() => handleToggleCompare(listing.id)} /> Compare
-                          </label>
                         </div>
                       </div>
                     );
                   })
             }
           </div>
-          {compareIds.length >= 2 && (
-            <button className="adb-compare-launch" onClick={() => setShowComparison(true)}>
-              <Scale size={14} /> Compare {compareIds.length} listings
-            </button>
-          )}
         </div>
       )}
 
@@ -515,7 +499,7 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
                       <p className="adb-activity-title">AI Market Scan #{i + 1}</p>
                       <p className="adb-activity-detail">{listing.address} — ${listing.verifiedRent}/mo</p>
                       {aiData && <p className="adb-activity-cost">True Cost ~${Math.round(aiData.calculatedTrueCost)}/mo · Status: {aiData.status}</p>}
-                      <a className="adb-activity-source" href={listing.deepLink || listing.sourceUrl} target="_blank" rel="noreferrer">{listing.sourceName}</a>
+                      <span className="adb-activity-source">{listing.sourceName}</span>
                     </div>
                   </div>
                 );
@@ -533,21 +517,8 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
         budget={budget}
         lifestyle={lifestyle}
         onClose={() => setSelectedListingId(null)}
+        onTabSwitch={onTabSwitch}
       />
-
-      {showComparison && compareIds.length > 0 && (() => {
-        const compareListings = validListings.filter(l => compareIds.includes(l.id));
-        if (compareListings.length < 2) return null;
-        return (
-          <ComparisonView
-            listings={compareListings}
-            budget={budget}
-            lifestyle={lifestyle}
-            trueCosts={trueCostsMap}
-            onClose={() => { setShowComparison(false); setCompareIds([]); }}
-          />
-        );
-      })()}
     </div>
   );
 };

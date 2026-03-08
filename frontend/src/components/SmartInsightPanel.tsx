@@ -5,11 +5,10 @@ import type { VerifiedListing } from '../services/geminiService';
 import type { UserLifestyle } from '../hooks/useBackboard';
 import { generatePropertyBrief } from '../services/voiceService';
 import type { PropertyBriefInput } from '../services/voiceService';
-import { MOCK_ONTARIO_LEASE } from '../data/mockLease';
 import { fetchDeepNeighborhoodReport } from '../services/geminiService';
 import type { NeighborhoodReport } from '../services/geminiService';
 import { 
-  ExternalLink, Volume2, AlertTriangle, FileText, 
+  Volume2, FileText, 
   Mail, Lightbulb, Home, Train, ShoppingCart, Info, 
   Search, Copy, Link2, ChevronRight 
 } from 'lucide-react';
@@ -21,10 +20,11 @@ interface SmartInsightPanelProps {
   budget: number;
   lifestyle: UserLifestyle;
   onClose: () => void;
+  onTabSwitch: (tab: 'explore' | 'listings' | 'vault' | 'advocate' | 'activity') => void;
 }
 
 export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({ 
-  listing, aiData, budget, lifestyle, onClose 
+  listing, aiData, budget, lifestyle, onClose, onTabSwitch 
 }) => {
   const [isClosing, setIsClosing] = useState(false);
   
@@ -35,7 +35,6 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
 
   // State Reset on Listing Change (Safety)
   React.useEffect(() => {
-    setLeaseFlags(null);
     setIntroEmail(null);
     setDeepReport(null);
     setAudioState('idle');
@@ -46,10 +45,6 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
   }, [listing?.id]);
   const [audioState, setAudioState] = React.useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
-  
-  // Logistics State
-  const [scanningLease, setScanningLease] = useState(false);
-  const [leaseFlags, setLeaseFlags] = useState<string | null>(null);
   
   const [generatingEmail, setGeneratingEmail] = useState(false);
   const [introEmail, setIntroEmail] = useState<string | null>(null);
@@ -81,11 +76,7 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
   const isOverBudget = !isPartialMatch && costDelta < 0;
   const costDeltaDisplay = Math.abs(costDelta).toFixed(2);
 
-  // --- Verify button label ---
-  const verifyLabel = listing.sourceName
-    ? `View Original Ad on ${listing.sourceName}`
-    : 'View Listing';
-  const verifyUrl = listing.deepLink || listing.sourceUrl || '#';
+
   
   const handleAudioPlay = async () => {
     // If already playing, toggle pause/resume
@@ -158,39 +149,13 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
     setAudioState('idle');
   };
 
-  const handleScanLease = async () => {
-    setScanningLease(true);
-    setLeaseFlags(null);
-    const toastId = toast.loading('Scanning lease document...');
-    try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) throw new Error("Missing Gemini Key");
-      
-      try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-        
-        const prompt = `Analyze this Ontario Standard Lease. Identify any illegal deposits (like damage deposits which are illegal in ON), hidden utility costs, or restrictive clauses. Summarize them as highly concise "Red Flags" for the prospective tenant.
-        
-        LEASE TEXT:
-        ${MOCK_ONTARIO_LEASE}
-        `;
-        
-        const result = await model.generateContent(prompt);
-        setLeaseFlags(result.response.text());
-        toast.success('Lease analysis complete', { id: toastId });
-      } catch (err: any) {
-        if (err.message && err.message.includes('429')) {
-          toast.error("Gemini API Free Tier Limit Reached. Please pause 30 seconds.", { id: toastId });
-        } else {
-          toast.error(`Scan failed: ${err.message}`, { id: toastId });
-        }
-      }
-    } catch (err: any) {
-      toast.error(`Initialization failed: ${err.message}`, { id: toastId });
-    } finally {
-      setScanningLease(false);
-    }
+  const handleAnalyzeLeaseRedirect = () => {
+    onTabSwitch('advocate');
+    toast('Paste the lease agreement here for a full breakdown of its terms.', {
+      icon: '📄',
+      duration: 5000
+    });
+    handleClose(); // Close the panel after redirecting
   };
 
   const handleGenerateEmail = async () => {
@@ -292,15 +257,14 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
           )}
 
           <p className="sip-desc">"{listing.description}"</p>
-          <a href={verifyUrl} target="_blank" rel="noreferrer" className="verify-link-btn">
-            <ExternalLink size={15} />
-            {verifyLabel}
-          </a>
-          {listing.verificationSource && (
-            <p className="source-note">
-              Source: {listing.verificationSource}
-            </p>
-          )}
+          <button 
+            onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(listing.address + ' ' + listing.city + ' rent')}`, '_blank')}
+            className="verify-link-btn"
+            style={{ width: '100%', justifyContent: 'center', background: '#0f172a', border: '1px solid #334155' }}
+          >
+            <Search size={15} />
+            Search Property on Google
+          </button>
         </section>
 
         <section className="sip-section true-cost-breakdown">
@@ -496,18 +460,11 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
             
             <div className="toolkit-action">
               <button 
-                className={`sip-tool-btn ${scanningLease ? 'processing' : ''}`} 
-                onClick={handleScanLease}
-                disabled={scanningLease}
+                className="sip-tool-btn" 
+                onClick={handleAnalyzeLeaseRedirect}
               >
-                {scanningLease ? <><span className="btn-spinner"></span> Scanning...</> : <><FileText size={14} /> Scan Potential Lease</>}
+                <FileText size={14} /> Analyze Lease Contents
               </button>
-              {leaseFlags && (
-                <div className="lease-flags-output">
-                  <strong><AlertTriangle size={13} style={{display:'inline', marginRight:4}} />Lease Red Flags:</strong>
-                  <div className="ai-text-box">{leaseFlags}</div>
-                </div>
-              )}
             </div>
 
             <div className="toolkit-action">
