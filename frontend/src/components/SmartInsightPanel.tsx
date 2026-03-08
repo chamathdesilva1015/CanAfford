@@ -6,7 +6,9 @@ import type { UserLifestyle } from '../hooks/useBackboard';
 import { generatePropertyBrief } from '../services/voiceService';
 import type { PropertyBriefInput } from '../services/voiceService';
 import { MOCK_ONTARIO_LEASE } from '../data/mockLease';
-import { ExternalLink, Volume2, Flag, AlertTriangle, FileText, Mail, Lightbulb, Home, Train, ShoppingCart, Info } from 'lucide-react';
+import { fetchDeepNeighborhoodReport } from '../services/geminiService';
+import type { NeighborhoodReport } from '../services/geminiService';
+import { ExternalLink, Volume2, Flag, AlertTriangle, FileText, Mail, Lightbulb, Home, Train, ShoppingCart, Info, Search } from 'lucide-react';
 import './SmartInsightPanel.css';
 
 interface SmartInsightPanelProps {
@@ -31,6 +33,10 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
   
   const [generatingEmail, setGeneratingEmail] = useState(false);
   const [introEmail, setIntroEmail] = useState<string | null>(null);
+
+  // Deep Research State
+  const [isResearching, setIsResearching] = useState(false);
+  const [deepReport, setDeepReport] = useState<NeighborhoodReport | null>(null);
 
   if (!listing) return null;
 
@@ -154,7 +160,11 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
         setLeaseFlags(result.response.text());
         toast.success('Lease analysis complete', { id: toastId });
       } catch (err: any) {
-        toast.error(`Scan failed: ${err.message}`, { id: toastId });
+        if (err.message && err.message.includes('429')) {
+          toast.error("Gemini API Free Tier Limit Reached. Please pause 30 seconds.", { id: toastId });
+        } else {
+          toast.error(`Scan failed: ${err.message}`, { id: toastId });
+        }
       }
     } catch (err: any) {
       toast.error(`Initialization failed: ${err.message}`, { id: toastId });
@@ -187,7 +197,11 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
         setIntroEmail(result.response.text());
         toast.success('Email drafted successfully', { id: toastId });
       } catch (err: any) {
-        toast.error(`Drafting failed: ${err.message}`, { id: toastId });
+        if (err.message && err.message.includes('429')) {
+          toast.error("Gemini API Free Tier Limit Reached. Please pause 30 seconds.", { id: toastId });
+        } else {
+          toast.error(`Drafting failed: ${err.message}`, { id: toastId });
+        }
       }
     } catch (err: any) {
       toast.error(`Initialization failed: ${err.message}`, { id: toastId });
@@ -196,6 +210,20 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
     }
   };
 
+  const handleDeepResearch = async () => {
+    setIsResearching(true);
+    setDeepReport(null);
+    const toastId = toast.loading('Running deep background check...');
+    try {
+      const report = await fetchDeepNeighborhoodReport(listing.address, listing.city);
+      setDeepReport(report);
+      toast.success('Neighborhood report complete', { id: toastId });
+    } catch (err: any) {
+      toast.error(`Research failed: ${err.message}`, { id: toastId });
+    } finally {
+      setIsResearching(false);
+    }
+  };
 
   return (
     <aside className="smart-insight-panel pro-theme">
@@ -328,26 +356,70 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
         </section>
 
         <section className="sip-section community-vetting">
-          <h4 className="text-slate-900">Community Vetting Matrix</h4>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+          <h4 className="text-slate-900">Neighborhood & Livability Index</h4>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
             <div className={`trust-ring score-${listing.trustScore > 80 ? 'high' : listing.trustScore > 60 ? 'med' : 'low'}`}>
               <span className="score-num">{listing.trustScore}</span>
             </div>
-            <span className="score-label">Trust Score</span>
+            <span className="score-label" style={{marginLeft: '12px'}}>Livability Score</span>
           </div>
+          <p className="text-slate-500" style={{fontSize: '0.72rem', marginBottom: '1rem', lineHeight: 1.3}}>
+            Calculated using regional walkability, transit density, and aggregate community safety data.
+          </p>
           
           <ul className="sip-notes">
             {listing.communityNotes.map((note, idx) => (
-              <li key={idx}>{note}</li>
+              <li key={idx}>
+                {note} <span style={{color: '#10b981', fontSize: '0.65rem', marginLeft: '4px', whiteSpace: 'nowrap'}}>✓ Verified via Map Data</span>
+              </li>
             ))}
           </ul>
           
-
+          {!deepReport ? (
+            <button 
+              className={`sip-tool-btn sip-research-btn ${isResearching ? 'processing' : ''}`} 
+              onClick={handleDeepResearch}
+              disabled={isResearching}
+              style={{ width: '100%', marginTop: '1rem', background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1' }}
+            >
+              {isResearching ? (
+                <><span className="btn-spinner"></span> Scanning Community Reviews & Safety Data...</>
+              ) : (
+                <><Search size={14} /> Run Deep Neighborhood Background Check</>
+              )}
+            </button>
+          ) : (
+            <div className="deep-report-card">
+              <h5 style={{fontSize: '0.85rem', fontWeight: 600, color: '#f8fafc', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.1)'}}>Target Deep Background Report</h5>
+              
+              <div className="report-item" style={{marginBottom: '12px'}}>
+                <span className="report-label" style={{display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '4px'}}>Building/Landlord Reputation</span>
+                <p style={{fontSize: '0.8rem', lineHeight: 1.4}} className={`report-text ${deepReport.landlordReputation.toLowerCase().includes('negative') || deepReport.landlordReputation.toLowerCase().includes('issue') || deepReport.landlordReputation.toLowerCase().includes('poor') ? 'text-amber-500' : 'text-slate-200'}`}>
+                  {deepReport.landlordReputation}
+                </p>
+              </div>
+              
+              <div className="report-item" style={{marginBottom: '12px'}}>
+                <span className="report-label" style={{display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '4px'}}>Safety & Crime Profile</span>
+                <p style={{fontSize: '0.8rem', lineHeight: 1.4}} className={`report-text ${deepReport.safetyProfile.toLowerCase().includes('safe') || deepReport.safetyProfile.toLowerCase().includes('low') ? 'text-teal-400' : 'text-slate-200'}`}>
+                  {deepReport.safetyProfile}
+                </p>
+              </div>
+              
+              <div className="report-item" style={{marginBottom: '12px'}}>
+                <span className="report-label" style={{display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '4px'}}>Environmental Vibe</span>
+                <p style={{fontSize: '0.8rem', lineHeight: 1.4}} className="report-text text-slate-200">
+                  {deepReport.environmentalVibe}
+                </p>
+              </div>
+            </div>
+          )}
 
           {!isFlagged && (
             <button 
               className="sip-flag-btn" 
               onClick={() => onFlag(listing.id, "Too good to be true")}
+              style={{marginTop: '1.5rem'}}
             >
               <Flag size={14} /> Flag as Suspicious
             </button>

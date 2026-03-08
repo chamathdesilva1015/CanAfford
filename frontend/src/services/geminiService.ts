@@ -143,6 +143,9 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
       console.warn("Gemini Safety Block: Candidate was blocked due to RECITATION. Returning empty array.");
       return { cityEconomics: { adultTransit: 156, studentTransit: 128, transitName: 'Standard Pass', grocery: 350, grocerySource: 'Estimate' }, listings: [] };
     }
+    if (error.message && error.message.includes('429')) {
+      throw new Error("Gemini API Free Tier Limit Reached. Please pause for 30 seconds before searching again.");
+    }
     throw error;
   }
 
@@ -263,4 +266,44 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
     },
     listings
   };
+};
+
+export interface NeighborhoodReport {
+  landlordReputation: string;
+  safetyProfile: string;
+  environmentalVibe: string;
+}
+
+export const fetchDeepNeighborhoodReport = async (address: string, city: string): Promise<NeighborhoodReport> => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Missing VITE_GEMINI_API_KEY");
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    tools: [{ googleSearch: {} } as any]
+  });
+
+  const prompt = `You are a real estate investigator. Use Google Search to investigate the immediate neighborhood surrounding ${address}, ${city}. You must return a structured JSON report containing:
+1. Landlord/Building Reputation: Summarize any found reviews, Reddit threads, or news about the property management company or building. If none exist, state "No significant negative reports found."
+2. Safety & Crime Profile: What is the general safety reputation and crime trend of this specific neighborhood?
+3. Environmental Vibe: Is it loud? Is it near green spaces? Who lives here (e.g., students, families, young professionals)?
+
+Return ONLY a raw JSON object. No Markdown. Exact schema:
+{
+  "landlordReputation": "string",
+  "safetyProfile": "string",
+  "environmentalVibe": "string"
+}`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    let cleanJson = result.response.text().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(cleanJson) as NeighborhoodReport;
+  } catch (error: any) {
+    if (error.message && error.message.includes('429')) {
+      throw new Error("Gemini API Free Tier Limit Reached. Please pause for 30 seconds before searching again.");
+    }
+    throw error;
+  }
 };
