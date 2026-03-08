@@ -62,9 +62,10 @@ Get the True Cost engine running on your own machine.
 3.  **Secure your Environment:**
     Create a `.env` file in your `/frontend` directory containing your vital API keys:
     ```env
-    VITE_GEMINI_API_KEY=your_gemini_key
-    VITE_ELEVENLABS_API_KEY=your_elevenlabs_key
-    VITE_BACKBOARD_API_KEY=your_backboard_key
+    VITE_GEMINI_API_KEY=gemini_key
+    VITE_CLOUDINARY_CLOUD_NAME=dummy_cloud_name
+    VITE_CLOUDINARY_UPLOAD_PRESET=dummy_preset
+    VITE_ELEVENLABS_API_KEY=dummy_elevenlabs_key
     ```
 
 4.  **Ignite the Engine:**
