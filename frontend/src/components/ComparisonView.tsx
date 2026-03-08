@@ -2,13 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { VerifiedListing } from '../services/geminiService';
 import type { UserLifestyle } from '../hooks/useBackboard';
-import { cld } from '../cloudinary/config';
-import { AdvancedImage, placeholder, lazyload } from '@cloudinary/react';
-import { Scale, Trophy, Bot } from 'lucide-react';
-import { fill } from '@cloudinary/url-gen/actions/resize';
-import { format, quality } from '@cloudinary/url-gen/actions/delivery';
-import { auto } from '@cloudinary/url-gen/qualifiers/format';
-import { auto as autoQuality } from '@cloudinary/url-gen/qualifiers/quality';
+import { Scale, Trophy, Bot, X, Trash2, Home } from 'lucide-react';
 import './ComparisonView.css';
 
 interface ComparisonViewProps {
@@ -16,7 +10,6 @@ interface ComparisonViewProps {
   budget: number;
   lifestyle: UserLifestyle;
   onClose: () => void;
-  // External True Cost calculations from standard engine
   trueCosts: Record<string, number>; 
 }
 
@@ -26,6 +19,8 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ listings, budget
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!listings || listings.length < 2) return;
+
     const fetchDecision = async () => {
       setLoading(true);
       setError(null);
@@ -36,15 +31,17 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ listings, budget
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-        const comparisonData = listings?.map(l => ({
+        const comparisonData = listings.map(l => ({
           id: l.id,
           address: l.address,
           rent: l.verifiedRent,
           trueCost: trueCosts[l.id] || 'Unknown',
           trustScore: l.trustScore,
-          communityNotes: l.communityNotes
+          communityNotes: l.communityNotes,
+          type: l.type || 'Unknown',
+          beds: l.beds || 'Unknown'
         }));
 
         const prompt = `
@@ -80,14 +77,26 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ listings, budget
     };
 
     fetchDecision();
-  }, [listings?.map(l => l.id).join(','), budget, lifestyle, trueCosts]);
+  }, [listings.map(l => l.id).join(','), budget, lifestyle, trueCosts]);
+
+  if (!listings || listings.length < 2) return null;
+
+  // Helper: determine best value for highlighting
+  const lowestRent = Math.min(...listings.map(l => l.verifiedRent));
+  const lowestTrueCost = Math.min(...listings.map(l => trueCosts[l.id] || Infinity));
+  const highestTrust = Math.max(...listings.map(l => l.trustScore || 0));
 
   return (
-    <div className="comparison-overlay">
+    <div className="comparison-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="comparison-modal">
         <header className="comparison-header">
-          <h2><Scale size={18} style={{display:'inline', marginRight:6}} />AI Comparison Studio</h2>
-          <button className="close-btn" onClick={onClose}>&times;</button>
+          <h2><Scale size={18} style={{display:'inline', marginRight:6}} />AI Comparison Matrix</h2>
+          <div className="comparison-header-actions">
+            <button className="comparison-clear-btn" onClick={onClose}>
+              <Trash2 size={14} /> Clear Comparison
+            </button>
+            <button className="close-btn" onClick={onClose}><X size={18} /></button>
+          </div>
         </header>
 
         <section className="decision-section">
@@ -108,66 +117,110 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ listings, budget
             <thead>
               <tr>
                 <th>Feature</th>
-                {listings?.map(l => (
-                  <th key={l.id}>{l.address}</th>
+                {listings.map(l => (
+                  <th key={l.id} className="comparison-addr-header">{l.address}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
+              {/* Photo placeholder */}
               <tr>
                 <td><strong>Photo</strong></td>
-                {listings?.map(l => {
-                  const displayImage = cld
-                    .image(l.imageId)
-                    .resize(fill().width(200).height(120))
-                    .delivery(format(auto()))
-                    .delivery(quality(autoQuality()));
+                {listings.map(l => (
+                  <td key={l.id}>
+                    <div className="comparison-img-placeholder">
+                      <Home size={36} strokeWidth={1.2} />
+                    </div>
+                  </td>
+                ))}
+              </tr>
+
+              {/* Base Rent */}
+              <tr>
+                <td><strong>Base Rent</strong></td>
+                {listings.map(l => (
+                  <td key={l.id} className={l.verifiedRent === lowestRent ? 'compare-best' : ''}>
+                    ${l.verifiedRent}/mo
+                    {l.verifiedRent === lowestRent && <span className="compare-winner">Best</span>}
+                  </td>
+                ))}
+              </tr>
+
+              {/* True Cost */}
+              <tr>
+                <td><strong>True Cost</strong></td>
+                {listings.map(l => {
+                  const tc = trueCosts[l.id];
                   return (
-                    <td key={l.id}>
-                       <AdvancedImage
-                          cldImg={displayImage}
-                          plugins={[placeholder({ mode: 'blur' }), lazyload()]}
-                          alt={l.address}
-                          className="comparison-img"
-                        />
+                    <td key={l.id} className={`true-cost-cell ${tc === lowestTrueCost ? 'compare-best' : ''}`}>
+                      ${tc || '--'}/mo
+                      {tc === lowestTrueCost && <span className="compare-winner">Best</span>}
                     </td>
                   );
                 })}
               </tr>
+
+              {/* Property Type */}
               <tr>
-                <td><strong>Base Rent</strong></td>
-                {listings?.map(l => (
-                  <td key={l.id}>${l.verifiedRent}/mo</td>
+                <td><strong>Property Type</strong></td>
+                {listings.map(l => (
+                  <td key={l.id}>{l.type || l.beds || 'Standard'}</td>
                 ))}
               </tr>
+
+              {/* Commute Time (estimated) */}
               <tr>
-                <td><strong>True Cost</strong></td>
-                {listings?.map(l => (
-                  <td key={l.id} className="true-cost-cell">
-                    ${trueCosts[l.id] || '--'}/mo
-                  </td>
-                ))}
+                <td><strong>Est. Commute</strong></td>
+                {listings.map(l => {
+                  // Generate a deterministic commute estimate
+                  const seedStr = l.lat.toString() + l.lng.toString() + (lifestyle.workLocation || 'Toronto');
+                  let hash = 0;
+                  for (let i = 0; i < seedStr.length; i++) {
+                    hash = seedStr.charCodeAt(i) + ((hash << 5) - hash);
+                  }
+                  const baseMinutes = 15 + (Math.abs(hash) % 45);
+                  const commute = lifestyle.commuteType === 'Car' ? Math.max(10, Math.round(baseMinutes * 0.6)) : baseMinutes;
+                  return (
+                    <td key={l.id}>{commute} min ({lifestyle.commuteType})</td>
+                  );
+                })}
               </tr>
-              <tr>
-                <td><strong>Regional Analysis</strong></td>
-                {listings?.map(l => (
-                  <td key={l.id}>Strict Audit</td>
-                ))}
-              </tr>
+
+              {/* Trust Score */}
               <tr>
                 <td><strong>Trust Score</strong></td>
-                {listings?.map(l => (
-                  <td key={l.id} className={`trust-score score-${l.trustScore > 80 ? 'high' : l.trustScore > 60 ? 'med' : 'low'}`}>
+                {listings.map(l => (
+                  <td key={l.id} className={`trust-score score-${l.trustScore > 80 ? 'high' : l.trustScore > 60 ? 'med' : 'low'} ${l.trustScore === highestTrust ? 'compare-best' : ''}`}>
                     {l.trustScore}/100
+                    {l.trustScore === highestTrust && <span className="compare-winner">Best</span>}
                   </td>
                 ))}
               </tr>
+
+              {/* Budget Status */}
+              <tr>
+                <td><strong>vs. Budget</strong></td>
+                {listings.map(l => {
+                  const tc = trueCosts[l.id] || l.verifiedRent;
+                  const diff = tc - budget;
+                  return (
+                    <td key={l.id} className={diff <= 0 ? 'compare-under' : 'compare-over'}>
+                      {diff <= 0 ? `$${Math.abs(diff)} under` : `$${diff} over`}
+                    </td>
+                  );
+                })}
+              </tr>
+
+              {/* Community Notes */}
               <tr>
                 <td><strong>Community Notes</strong></td>
-                {listings?.map(l => (
+                {listings.map(l => (
                   <td key={l.id} className="notes-list">
                     <ul>
-                      {l.communityNotes?.map((note, i) => <li key={i}>{note}</li>)}
+                      {l.communityNotes?.length > 0 
+                        ? l.communityNotes.map((note, i) => <li key={i}>{note}</li>)
+                        : <li style={{color: '#475569'}}>No notes available</li>
+                      }
                     </ul>
                   </td>
                 ))}

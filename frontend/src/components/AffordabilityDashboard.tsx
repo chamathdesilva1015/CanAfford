@@ -63,9 +63,11 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
   const targetCity = filters.city !== 'All' ? filters.city : (cities[0] || 'Toronto');
 
   const handleToggleCompare = (id: string) => {
-    setCompareIds(prev => 
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
+    setCompareIds(prev => {
+      if (prev.includes(id)) return prev.filter(x => x !== id);
+      if (prev.length >= 3) { toast.error('Maximum 3 properties for comparison'); return prev; }
+      return [...prev, id];
+    });
   };
 
   const getGeminiListingData = (id: string) => {
@@ -533,15 +535,19 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
         onClose={() => setSelectedListingId(null)}
       />
 
-      {showComparison && (
-        <ComparisonView
-          listings={useMemo(() => validListings?.filter(l => compareIds?.includes(l.id)) || [], [compareIds, validListings])}
-          budget={budget}
-          lifestyle={lifestyle}
-          trueCosts={trueCostsMap}
-          onClose={() => setShowComparison(false)}
-        />
-      )}
+      {showComparison && compareIds.length > 0 && (() => {
+        const compareListings = validListings.filter(l => compareIds.includes(l.id));
+        if (compareListings.length < 2) return null;
+        return (
+          <ComparisonView
+            listings={compareListings}
+            budget={budget}
+            lifestyle={lifestyle}
+            trueCosts={trueCostsMap}
+            onClose={() => { setShowComparison(false); setCompareIds([]); }}
+          />
+        );
+      })()}
     </div>
   );
 };
