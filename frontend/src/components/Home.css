@@ -385,6 +385,96 @@
   margin: 0;
 }
 
+/* ── TENANT PROTECTION ARSENAL ── */
+.lp-arsenal {
+  background: #030712;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+
+.lp-arsenal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.lp-arsenal-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  padding: 2rem 1.75rem;
+  transition: border-color 0.22s, transform 0.22s;
+}
+
+.lp-arsenal-card:hover {
+  border-color: rgba(99,102,241,0.25);
+  transform: translateY(-3px);
+}
+
+.lp-arsenal-card--accent {
+  background: rgba(0,255,135,0.03);
+  border-color: rgba(0,255,135,0.12);
+}
+
+.lp-arsenal-card--accent:hover {
+  border-color: rgba(0,255,135,0.3);
+}
+
+.lp-arsenal-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.2rem;
+}
+
+.lp-arsenal-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin: 0 0 0.65rem;
+  line-height: 1.3;
+}
+
+.lp-arsenal-card p {
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* Stagger arsenal cards */
+.lp-arsenal-grid > * {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.lp-visible .lp-arsenal-grid > *:nth-child(1) { opacity: 1; transform: translateY(0); transition-delay: 0.1s; }
+.lp-visible .lp-arsenal-grid > *:nth-child(2) { opacity: 1; transform: translateY(0); transition-delay: 0.25s; }
+.lp-visible .lp-arsenal-grid > *:nth-child(3) { opacity: 1; transform: translateY(0); transition-delay: 0.4s; }
+
+/* ── TRUST BADGE ── */
+.lp-trust-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 2rem 1.5rem;
+  background: #030712;
+  font-size: 0.78rem;
+  color: #475569;
+  text-align: center;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+
+.lp-trust-badge svg {
+  color: #0061ff;
+  flex-shrink: 0;
+}
+
 /* ── FAT FOOTER ── */
 .lp-footer {
   background: #060d1b;

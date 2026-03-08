@@ -1,7 +1,7 @@
 import { useAuth0 } from '@auth0/auth0-react';
 import { Navigate } from 'react-router-dom';
 import { useEffect, useRef } from 'react';
-import { Search, DollarSign, ExternalLink, ChevronDown, MapPin, ShieldCheck } from 'lucide-react';
+import { Search, DollarSign, ExternalLink, ChevronDown, MapPin, ShieldCheck, Users, Scale, Radar } from 'lucide-react';
 import './Home.css';
 
 /* ── Scroll fade hook ── */
@@ -26,6 +26,8 @@ export const Home = () => {
   const howRef = useFadeIn();
   const footerRef = useFadeIn();
   const heroContentRef = useFadeIn();
+  const arsenalRef = useFadeIn();
+  const trustRef = useFadeIn();
   const heroRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -78,8 +80,8 @@ export const Home = () => {
             <span className="lp-headline-accent">Actually Afford.</span>
           </h1>
           <p className="lp-subheadline">
-            CanAfford uses Gemini AI live search to surface the <strong>true cost of living</strong>—rent,
-            transit, and groceries—pulled directly from real, active listings.
+            CanAfford uses Gemini AI to calculate the <strong>true cost of living</strong>, audit leases
+            against Ontario law, and scan neighborhood safety data—so you never get caught by hidden costs or bad landlords.
           </p>
           <div className="lp-hero-actions">
             <button className="lp-btn-primary" onClick={handleLogin}>
@@ -175,6 +177,60 @@ export const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* ── TENANT PROTECTION ARSENAL ── */}
+      <section className="lp-section lp-arsenal lp-fade" ref={arsenalRef as any}>
+        <div className="lp-inner">
+          <p className="lp-label">Beyond the Budget</p>
+          <h2 className="lp-title">Your Tenant Protection Arsenal.</h2>
+          <p className="lp-body lp-body-center">
+            We don't just find you a place. We protect you from the moment you search to the moment you sign.
+          </p>
+
+          <div className="lp-arsenal-grid">
+            <div className="lp-arsenal-card">
+              <div className="lp-arsenal-icon" style={{ background: 'rgba(96,239,255,0.10)', color: '#60efff' }}>
+                <Radar size={26} />
+              </div>
+              <h3>Know the Neighbors Before You Move.</h3>
+              <p>
+                We bypass the marketing fluff. Click a button to instantly scan Reddit threads,
+                local police safety data, and landlord reputation reviews for any specific address.
+              </p>
+            </div>
+
+            <div className="lp-arsenal-card lp-arsenal-card--accent">
+              <div className="lp-arsenal-icon" style={{ background: 'rgba(0,255,135,0.10)', color: '#00ff87' }}>
+                <ShieldCheck size={26} />
+              </div>
+              <h3>Your AI Legal Advocate.</h3>
+              <p>
+                Predatory landlords rely on you not knowing the law. Paste your prospective lease into
+                our Advocate tab, and we will instantly flag illegal clauses—like "No Pets" or mandatory
+                post-dated cheques—citing the exact sections of the Ontario Residential Tenancies Act.
+              </p>
+            </div>
+
+            <div className="lp-arsenal-card">
+              <div className="lp-arsenal-icon" style={{ background: 'rgba(245,158,11,0.10)', color: '#fbbf24' }}>
+                <Users size={26} />
+              </div>
+              <h3>Pivot and Apply in One Click.</h3>
+              <p>
+                Market too expensive? Use the Roommate Pivot to instantly recalculate your true cost split.
+                Ready to apply? Our AI drafts a tailored, professional intro email to the landlord using
+                your exact profile.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TRUST BADGE ── */}
+      <div className="lp-trust-badge lp-fade" ref={trustRef as any}>
+        <Scale size={14} />
+        <span>Built for Ontario. Grounded in the 2026 Residential Tenancies Act. Powered by real-time Google Search Grounding.</span>
+      </div>
 
       {/* ── FAT FOOTER ── */}
       <footer id="footer" className="lp-footer lp-fade" ref={footerRef as any}>
