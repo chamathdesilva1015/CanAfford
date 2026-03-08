@@ -8,7 +8,7 @@ import type { PropertyBriefInput } from '../services/voiceService';
 import { MOCK_ONTARIO_LEASE } from '../data/mockLease';
 import { fetchDeepNeighborhoodReport } from '../services/geminiService';
 import type { NeighborhoodReport } from '../services/geminiService';
-import { ExternalLink, Volume2, Flag, AlertTriangle, FileText, Mail, Lightbulb, Home, Train, ShoppingCart, Info, Search } from 'lucide-react';
+import { ExternalLink, Volume2, Flag, AlertTriangle, FileText, Mail, Lightbulb, Home, Train, ShoppingCart, Info, Search, Copy } from 'lucide-react';
 import './SmartInsightPanel.css';
 
 interface SmartInsightPanelProps {
@@ -462,7 +462,19 @@ export const SmartInsightPanel: React.FC<SmartInsightPanelProps> = ({
               {introEmail && (
                 <div className="intro-email-output">
                   <strong>Draft Ready:</strong>
-                  <div className="ai-text-box selectable">{introEmail}</div>
+                  <textarea 
+                    className="ai-text-box selectable" 
+                    readOnly 
+                    value={introEmail}
+                    style={{width: '100%', minHeight: '160px', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.8rem', padding: '12px', background: '#0f172a', color: '#e2e8f0', border: '1px solid #334155', borderRadius: '8px', marginTop: '8px', lineHeight: 1.5}}
+                  />
+                  <button 
+                    className="sip-tool-btn" 
+                    onClick={() => { navigator.clipboard.writeText(introEmail); toast.success('Email copied to clipboard!'); }}
+                    style={{marginTop: '8px', width: '100%'}}
+                  >
+                    <Copy size={14} /> Copy to Clipboard
+                  </button>
                 </div>
               )}
             </div>

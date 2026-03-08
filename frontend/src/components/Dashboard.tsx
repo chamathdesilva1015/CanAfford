@@ -3,10 +3,10 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { useBackboard } from '../hooks/useBackboard';
 import type { UserPreferences } from '../hooks/useBackboard';
 import { AffordabilityDashboard } from './AffordabilityDashboard';
-import { Map, List, FolderLock, Activity, LogOut, Pencil, Save, X, User } from 'lucide-react';
+import { Map, List, FolderLock, Activity, LogOut, Pencil, Save, X, User, Shield } from 'lucide-react';
 import './Dashboard.css';
 
-type Tab = 'explore' | 'listings' | 'vault' | 'activity';
+type Tab = 'explore' | 'listings' | 'vault' | 'advocate' | 'activity';
 
 const CITY_SCHOOL_MAP: Record<string, string[]> = {
   'Toronto': ['University of Toronto', 'Toronto Metropolitan University', 'York University', 'George Brown College', 'Seneca College'],
@@ -21,6 +21,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'explore',  label: 'Explore',  icon: Map },
   { id: 'listings', label: 'Listings', icon: List },
   { id: 'vault',    label: 'Vault',    icon: FolderLock },
+  { id: 'advocate', label: 'Advocate', icon: Shield },
   { id: 'activity', label: 'Activity', icon: Activity },
 ];
 

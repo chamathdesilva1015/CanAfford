@@ -10,6 +10,7 @@ import { MapView } from './MapView';
 import { ComparisonView } from './ComparisonView';
 import { SmartInsightPanel } from './SmartInsightPanel';
 import { Vault } from './Vault';
+import { AdvocateTab } from './AdvocateTab';
 import { LoadingScreen } from './LoadingScreen';
 import { Scale, Home } from 'lucide-react';
 import type { UserLifestyle } from '../hooks/useBackboard';
@@ -21,6 +22,9 @@ export interface GeminiAnalysis {
     id: string;
     status: 'Affordable' | 'Stretch' | 'Unavailable';
     calculatedTrueCost: number;
+    rentBurden: number;
+    fullRent: number;
+    isRoommateSplit: boolean;
     mathBreakdown: {
       rent: number;
       transit: number;
@@ -43,7 +47,8 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
   const [filters, setFilters] = useState<FilterState>({
     city: 'All',
     commuteTolerance: 60,
-    trueCostOnly: false
+    trueCostOnly: false,
+    isRoommateSplit: false
   });
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
 
@@ -118,7 +123,8 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
       const generatedAnalysis: GeminiAnalysis = {
         cityEconomics,
         listings: strictListings.map((r: VerifiedListing) => {
-          const trueCost = r.verifiedRent + transitCost + groceryCost;
+          const rentBurden = filters.isRoommateSplit ? Math.round(r.verifiedRent / 2) : r.verifiedRent;
+          const trueCost = rentBurden + transitCost + groceryCost;
           
           let status: 'Affordable' | 'Stretch' | 'Unavailable' = 'Affordable';
           if (trueCost > budget * 1.1) status = 'Unavailable';
@@ -139,6 +145,9 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
             id: r.id,
             status,
             calculatedTrueCost: trueCost,
+            rentBurden: rentBurden,
+            fullRent: r.verifiedRent,
+            isRoommateSplit: filters.isRoommateSplit,
             calculatedCommuteTime: calculateCommuteTime(r.lat, r.lng, lifestyle.isStudent && lifestyle.university ? lifestyle.university : (lifestyle.workLocation || `${targetCity} Geographic Center`), lifestyle.commuteType),
             mathBreakdown: { 
               rent: r.verifiedRent, 
@@ -254,9 +263,12 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
                             </div>
                             <div className="adb-card-body p-4">
                               <p className="adb-card-price pr-20" style={{marginBottom: '2px'}}>${Math.round(aiData?.calculatedTrueCost || listing.verifiedRent)}<span>/mo Total</span></p>
+                              {aiData?.isRoommateSplit && (
+                                <p className="text-emerald-400" style={{fontSize: '0.7rem', marginBottom: '4px', fontWeight: 600}}>Your Share: ${aiData.rentBurden} (Half of ${aiData.fullRent})</p>
+                              )}
                               {aiData && (
                                 <p className="text-slate-400 truncate" style={{fontSize: '0.65rem', marginBottom: '8px', lineHeight: 1.3}}>
-                                  Rent: ${aiData.mathBreakdown.rent} | Transit: ${aiData.mathBreakdown.transit} | Food: ${aiData.mathBreakdown.groceries}
+                                  Rent: ${aiData.isRoommateSplit ? aiData.rentBurden : aiData.mathBreakdown.rent} | Transit: ${aiData.mathBreakdown.transit} | Food: ${aiData.mathBreakdown.groceries}
                                 </p>
                               )}
                               <p className="adb-card-addr text-slate-300 truncate">{listing.address}</p>
@@ -361,6 +373,11 @@ export const AffordabilityDashboard = ({ budget, cities, lifestyle, activeTab = 
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── ADVOCATE ── */}
+      {activeTab === 'advocate' && (
+        <AdvocateTab />
       )}
 
       {/* ── ACTIVITY ── */}

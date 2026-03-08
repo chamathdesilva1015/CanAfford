@@ -6,6 +6,7 @@ export interface FilterState {
   city: string;
   commuteTolerance: number;
   trueCostOnly: boolean;
+  isRoommateSplit: boolean;
 }
 
 interface SearchFiltersProps {
@@ -59,6 +60,17 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({ filters, setFilter
             onChange={e => setFilters(prev => ({ ...prev, trueCostOnly: e.target.checked }))} 
           />
           Show Only Affordable / Stretch (Hide Unavailable)
+        </label>
+      </div>
+
+      <div className="filter-group toggle-group">
+        <label className="toggle-label roommate-toggle">
+          <input 
+            type="checkbox" 
+            checked={filters.isRoommateSplit} 
+            onChange={e => setFilters(prev => ({ ...prev, isRoommateSplit: e.target.checked }))} 
+          />
+          Split with a Roommate (Divide Rent by 2)
         </label>
       </div>
 

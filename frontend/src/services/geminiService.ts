@@ -307,3 +307,46 @@ Return ONLY a raw JSON object. No Markdown. Exact schema:
     throw error;
   }
 };
+
+export interface LeaseFlag {
+  clause: string;
+  type: 'red' | 'green';
+  reasoning: string;
+}
+
+export interface LeaseAnalysis {
+  redFlags: LeaseFlag[];
+  greenFlags: LeaseFlag[];
+  overallRisk: 'Low' | 'Medium' | 'High';
+  summary: string;
+}
+
+export const analyzeLeaseAgreement = async (leaseText: string): Promise<LeaseAnalysis> => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Missing VITE_GEMINI_API_KEY");
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+  const prompt = `You are an Ontario Tenant Rights AI Paralegal. Analyze the provided lease text against the Ontario Residential Tenancies Act (RTA). Identify ANY illegal or void clauses (e.g., "No Pets" provisions that override RTA Section 14, requirements for post-dated cheques which are illegal under RTA Section 108, illegal damage/security deposits beyond the last month's rent deposit under RTA Section 105/106, forced professional cleaning clauses, or any other clauses that contravene the RTA). Return a JSON object with:
+- "redFlags": array of objects with "clause" (the problematic text), "type": "red", and "reasoning" (the specific RTA section that makes it illegal/void)
+- "greenFlags": array of objects with "clause" (the standard/legal text), "type": "green", and "reasoning" (why it is compliant)
+- "overallRisk": "Low", "Medium", or "High" based on the severity and count of red flags
+- "summary": A 2-sentence summary of the lease's overall compliance
+
+LEASE TEXT:
+${leaseText}
+
+Return ONLY a raw JSON object. No Markdown.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    let cleanJson = result.response.text().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(cleanJson) as LeaseAnalysis;
+  } catch (error: any) {
+    if (error.message && error.message.includes('429')) {
+      throw new Error("Gemini API Free Tier Limit Reached. Please pause for 30 seconds before searching again.");
+    }
+    throw error;
+  }
+};
