@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { analyzeLeaseAgreement } from '../services/geminiService';
 import type { LeaseAnalysis } from '../services/geminiService';
-import { Shield, AlertTriangle, CheckCircle, Loader2, FileText } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, Loader2, FileText, ExternalLink } from 'lucide-react';
 import './AdvocateTab.css';
 
 export const AdvocateTab: React.FC = () => {
@@ -107,6 +107,11 @@ export const AdvocateTab: React.FC = () => {
                     <div key={idx} className="flag-card flag-card--red">
                       <p className="flag-clause">"{flag.clause}"</p>
                       <p className="flag-reasoning">{flag.reasoning}</p>
+                      {flag.referenceUrl && (
+                        <a href={flag.referenceUrl} target="_blank" rel="noreferrer" className="flag-ref-link">
+                          <ExternalLink size={11} /> View Official RTA Source
+                        </a>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -130,6 +135,10 @@ export const AdvocateTab: React.FC = () => {
           )}
         </div>
       </div>
+
+      <p style={{fontSize: '0.7rem', fontStyle: 'italic', color: '#64748b', padding: '16px 32px 24px', lineHeight: 1.5}}>
+        Disclaimer: CanAfford AI provides preliminary RTA screening and educational information. It does not constitute formal legal advice. Always verify with the Ontario Landlord and Tenant Board (LTB) or a licensed paralegal before signing a lease.
+      </p>
     </div>
   );
 };

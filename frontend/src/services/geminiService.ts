@@ -312,6 +312,7 @@ export interface LeaseFlag {
   clause: string;
   type: 'red' | 'green';
   reasoning: string;
+  referenceUrl?: string;
 }
 
 export interface LeaseAnalysis {
@@ -328,11 +329,27 @@ export const analyzeLeaseAgreement = async (leaseText: string): Promise<LeaseAna
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-  const prompt = `You are an Ontario Tenant Rights AI Paralegal. Analyze the provided lease text against the Ontario Residential Tenancies Act (RTA). Identify ANY illegal or void clauses (e.g., "No Pets" provisions that override RTA Section 14, requirements for post-dated cheques which are illegal under RTA Section 108, illegal damage/security deposits beyond the last month's rent deposit under RTA Section 105/106, forced professional cleaning clauses, or any other clauses that contravene the RTA). Return a JSON object with:
-- "redFlags": array of objects with "clause" (the problematic text), "type": "red", and "reasoning" (the specific RTA section that makes it illegal/void)
-- "greenFlags": array of objects with "clause" (the standard/legal text), "type": "green", and "reasoning" (why it is compliant)
-- "overallRisk": "Low", "Medium", or "High" based on the severity and count of red flags
-- "summary": A 2-sentence summary of the lease's overall compliance
+  const prompt = `You are a strict Ontario Tenant Rights AI Paralegal. You must evaluate the lease text EXCLUSIVELY against the Ontario Residential Tenancies Act (RTA), 2006. Do not reference laws from any other province or country.
+
+For every Red Flag you find, you MUST:
+1. Cite the specific RTA section number (e.g., "RTA Section 134(1)") or Landlord and Tenant Board (LTB) guideline.
+2. Provide a "referenceUrl" linking to the official Ontario e-Laws page (e.g., "https://www.ontario.ca/laws/statute/06r17") or the specific LTB tribunal guidance page.
+
+For Green Flags, cite the relevant RTA section confirming the clause is legal.
+
+Common illegal clauses to watch for:
+- "No Pets" provisions (void under RTA Section 14)
+- Requirements for post-dated cheques (illegal under RTA Section 108)
+- Damage/security deposits beyond last month's rent deposit (RTA Sections 105/106)
+- Forced professional cleaning clauses (not enforceable under RTA)
+- Guest restrictions (void under RTA Section 14)
+- Key deposit exceeding replacement cost (RTA Section 17)
+
+Return a JSON object with:
+- "redFlags": array of objects with "clause" (the problematic lease text), "type": "red", "reasoning" (the specific RTA section and explanation), and "referenceUrl" (link to official Ontario.ca e-laws or LTB page)
+- "greenFlags": array of objects with "clause" (the compliant lease text), "type": "green", and "reasoning" (the RTA section confirming compliance)
+- "overallRisk": "Low", "Medium", or "High" based on severity and count of red flags
+- "summary": A 2-sentence summary of the lease's overall RTA compliance
 
 LEASE TEXT:
 ${leaseText}
