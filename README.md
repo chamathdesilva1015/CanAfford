@@ -1,8 +1,6 @@
-# CanAfford 🏠
+# CanAfford
 
 **Don't just find a place to live. Find out if you can actually afford to survive there.**
-
-[![Watch the Demo](https://img.shields.io/badge/Watch-Demo_Video-red?style=for-the-badge&logo=youtube)](#)
 
 ---
 
@@ -23,7 +21,7 @@ We built CanAfford to smash these silos. The engine doesn't just show you houses
 
 CanAfford is a localized, AI-powered real estate engine designed to compute the "True Cost" of a property. We intercept the search process and inject real-world financial friction before a renter signs a lease.
 
-### 🧠 Core Features
+### Core Features
 
 *   **The True Cost Engine**: This is the heart of the platform. We aggregate base rent, calculate localized 2026 transit data (routing between Adult vs. Student passes dynamically), and blend in grocery inflation data. We map this against the user's dietary focus (Budget vs. Premium) to project actual survival costs.
 *   **The Roommate Pivot**: A dynamic, global UI toggle that instantly recalculates the financial viability of the entire map. By dividing rent burdens among roommates, previously "Red" (Unaffordable) zones instantly flip to "Green" (Affordable), exposing entirely new housing markets.
